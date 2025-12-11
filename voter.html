@@ -337,9 +337,11 @@
                     html += '<p style="color:#666;">No candidates for this session.</p>';
                 } else {
                     candidates.forEach(cand => {
+                        const img = cand.photo ? `<img src="${cand.photo}" class="candidate-photo" />` : '';
                         html += `
                             <label class="candidate-option" style="display:block; margin:8px 0;">
                                 <input type="radio" name="candidate_${sessionId}" value="${cand.id}" />
+                                ${img}
                                 <span class="candidate-name">${cand.name}</span>
                                 ${cand.bio ? `<div class="candidate-bio">${cand.bio}</div>` : ''}
                             </label>
@@ -356,9 +358,11 @@
                         html += '<div style="color:#666; margin-top:6px;">No candidates for this seat.</div>';
                     } else {
                         posCandidates.forEach(cand => {
+                            const img = cand.photo ? `<img src="${cand.photo}" class="candidate-photo" />` : '';
                             html += `
                                 <label style="display:block; margin:6px 0;">
                                     <input type="radio" name="position_${pos.id}" value="${cand.id}" />
+                                    ${img}
                                     <span class="candidate-name">${cand.name}</span>
                                     ${cand.bio ? `<div class="candidate-bio">${cand.bio}</div>` : ''}
                                 </label>

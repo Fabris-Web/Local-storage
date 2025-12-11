@@ -167,7 +167,10 @@
                                 <select id="sessionFormSeatSelect" style="width:200px; padding:8px;"></select>
                             </div>
                             <textarea id="sessionFormCandidateBio" placeholder="Bio (optional)" style="width:60%; padding:8px; margin:6px 0;" rows="2"></textarea>
-                            <div><button class="btn" type="button" onclick="addCandidateFromForm()">Add Candidate</button></div>
+                            <div style="margin:6px 0; display:flex; gap:8px; align-items:center;">
+                                <input id="sessionFormCandidatePhoto" type="file" accept="image/*" />
+                                <button class="btn" type="button" onclick="addCandidateFromForm()">Add Candidate</button>
+                            </div>
                         </div>
                         <ul id="sessionFormCandidatesList" style="padding-left:16px;"></ul>
                     </div>
@@ -434,7 +437,8 @@
             candidates.forEach(c => {
                 const pos = c.positionId ? DB.getPositions().find(p => p.id === c.positionId) : null;
                 const li = document.createElement('li');
-                li.innerHTML = `${c.name || ''} ${pos ? '('+pos.name+')' : ''} (${c.fromVoter || ''}) <button class="btn delete-btn" style="background:#dc3545; margin-left:8px;" onclick="removeCandidateFromForm('${c.id}','${sessionId}')">Remove</button>`;
+                const img = c.photo ? `<img src="${c.photo}" class="candidate-photo" />` : '';
+                li.innerHTML = `${img} ${c.name || ''} ${pos ? '('+pos.name+')' : ''} (${c.fromVoter || ''}) <button class="btn delete-btn" style="background:#dc3545; margin-left:8px;" onclick="removeCandidateFromForm('${c.id}','${sessionId}')">Remove</button>`;
                 candList.appendChild(li);
             });
         }
@@ -501,10 +505,22 @@
             const name = document.getElementById('sessionFormCandidateName').value.trim() || voter.split('@')[0];
             const positionId = document.getElementById('sessionFormSeatSelect').value || null;
             const bio = document.getElementById('sessionFormCandidateBio').value.trim();
-            DB.addCandidate({ name, bio, positionId: positionId, sessionId, fromVoter: voter });
-            populateSessionFormCandidates(sessionId);
-            loadCandidatesForManagerSessions();
-            alert(`${name} added as candidate`);
+            const photoInput = document.getElementById('sessionFormCandidatePhoto');
+            const file = photoInput?.files?.[0];
+            const finalize = (photoData) => {
+                DB.addCandidate({ name, bio, positionId: positionId, sessionId, fromVoter: voter, photo: photoData });
+                populateSessionFormCandidates(sessionId);
+                loadCandidatesForManagerSessions();
+                if (photoInput) photoInput.value = '';
+                alert(`${name} added as candidate`);
+            };
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) { finalize(e.target.result); };
+                reader.readAsDataURL(file);
+            } else {
+                finalize(null);
+            }
         }
 
         function removeCandidateFromForm(candidateId, sessionId) {
@@ -551,7 +567,8 @@
                         <select id="candidateSeatSelect_${s.id}" style="width:200px; padding:8px;"></select>
                     </div>
                     <textarea id="candidateBioInput_${s.id}" placeholder="Short bio (optional)" style="width:60%; padding:8px; margin:6px 0;" rows="2"></textarea>
-                    <div>
+                    <div style="display:flex; gap:8px; align-items:center; margin:6px 0;">
+                        <input id="candidatePhotoInput_${s.id}" type="file" accept="image/*" />
                         <button class="btn" onclick="addCandidateFromCard('${s.id}')">Add Candidate</button>
                     </div>
                     </div>
@@ -598,7 +615,8 @@
                 candUl.appendChild(header);
                 candidates.filter(c => c.positionId === p.id).forEach(c => {
                     const li = document.createElement('li');
-                    li.innerHTML = `${c.name || ''} (${c.fromVoter || ''}) <button class="btn delete-btn" style="background:#dc3545; margin-left:8px;" onclick="removeCandidate('${c.id}'); populateVotersAndCandidatesForCard('${sessionId}'); loadCandidatesForManagerSessions();">Remove</button>`;
+                    const img = c.photo ? `<img src="${c.photo}" class="candidate-photo" />` : '';
+                    li.innerHTML = `${img} ${c.name || ''} (${c.fromVoter || ''}) <button class="btn delete-btn" style="background:#dc3545; margin-left:8px;" onclick="removeCandidate('${c.id}'); populateVotersAndCandidatesForCard('${sessionId}'); loadCandidatesForManagerSessions();">Remove</button>`;
                     candUl.appendChild(li);
                 });
             });
@@ -606,7 +624,8 @@
                 const header = document.createElement('li'); header.innerHTML = `<strong>Unassigned</strong>`; candUl.appendChild(header);
                 unassigned.forEach(c => {
                     const li = document.createElement('li');
-                    li.innerHTML = `${c.name || ''} (${c.fromVoter || ''}) <button class="btn delete-btn" style="background:#dc3545; margin-left:8px;" onclick="removeCandidate('${c.id}'); populateVotersAndCandidatesForCard('${sessionId}'); loadCandidatesForManagerSessions();">Remove</button>`;
+                    const img = c.photo ? `<img src="${c.photo}" class="candidate-photo" />` : '';
+                    li.innerHTML = `${img} ${c.name || ''} (${c.fromVoter || ''}) <button class="btn delete-btn" style="background:#dc3545; margin-left:8px;" onclick="removeCandidate('${c.id}'); populateVotersAndCandidatesForCard('${sessionId}'); loadCandidatesForManagerSessions();">Remove</button>`;
                     candUl.appendChild(li);
                 });
             }
@@ -639,15 +658,27 @@
             const nameInput = document.getElementById(`candidateNameInput_${sessionId}`);
             const bioInput = document.getElementById(`candidateBioInput_${sessionId}`);
             const seatSelect = document.getElementById(`candidateSeatSelect_${sessionId}`);
+            const photoInput = document.getElementById(`candidatePhotoInput_${sessionId}`);
             const voterEmail = voterSelect.value;
             if (!voterEmail) return alert('Please select an invited voter to promote');
             const displayName = nameInput.value.trim() || voterEmail.split('@')[0];
             const bio = bioInput.value.trim();
             const positionId = seatSelect ? (seatSelect.value || null) : null;
-            DB.addCandidate({ name: displayName, bio: bio, positionId: positionId, sessionId: sessionId, fromVoter: voterEmail });
-            populateVotersAndCandidatesForCard(sessionId);
-            loadCandidatesForManagerSessions();
-            alert(`${displayName} added as candidate for the session.`);
+            const file = photoInput?.files?.[0];
+            const finalize = (photoData) => {
+                DB.addCandidate({ name: displayName, bio: bio, positionId: positionId, sessionId: sessionId, fromVoter: voterEmail, photo: photoData });
+                if (photoInput) photoInput.value = '';
+                populateVotersAndCandidatesForCard(sessionId);
+                loadCandidatesForManagerSessions();
+                alert(`${displayName} added as candidate for the session.`);
+            };
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) { finalize(e.target.result); };
+                reader.readAsDataURL(file);
+            } else {
+                finalize(null);
+            }
         }
 
         function removeCandidate(id) {
