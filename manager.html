@@ -302,6 +302,7 @@
 
         // Load manager's assigned sessions
         function loadSessions() {
+            DB.autoCloseExpiredSessions();
             const sessions = DB.getSessions();
             const tbody = document.getElementById('sessionsList');
             tbody.innerHTML = '';
@@ -320,11 +321,16 @@
 
             assignedSessions.forEach(s => {
                 const row = document.createElement('tr');
+                const active = DB.isSessionActive(s);
+                const statusHtml = active ? '<span class="status-badge status-approved">Active</span>' : (s.closed ? '<span class="status-badge status-rejected">Closed</span>' : '<span class="status-badge">Inactive</span>');
                 row.innerHTML = `
                     <td>${s.title}</td>
                     <td>${s.seats || 1} Seats</td>
-                    <td>${formatDateTime(s.startDate)} - ${formatDateTime(s.endDate)}</td>
-                    <td>${s.closed ? '<span class="status-badge status-rejected">Closed</span>' : '<span class="status-badge status-approved">Open</span>'}</td>
+                    <td>
+                        ${formatDateTime(s.startDate)} - ${formatDateTime(s.endDate)}
+                        <div id="countdown_${s.id}" class="session-countdown" style="font-size:12px;color:#666; margin-top:6px;"></div>
+                    </td>
+                    <td id="status_${s.id}">${statusHtml}</td>
                     <td>
                         <button class="btn" onclick="toggleSessionStatus('${s.id}')">${s.closed ? 'Reopen' : 'Close'}</button>
                         <button class="btn" onclick="toggleSessionEditForm('${s.id}')">Edit</button>
@@ -351,6 +357,45 @@
             loadCandidatesForManagerSessions();
             updateStats();
         }
+
+        function formatRemaining(ms) {
+            if (ms <= 0) return '0s';
+            const sec = Math.floor(ms / 1000) % 60;
+            const min = Math.floor(ms / (1000 * 60)) % 60;
+            const hrs = Math.floor(ms / (1000 * 60 * 60)) % 24;
+            const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+            const parts = [];
+            if (days) parts.push(days + 'd');
+            if (hrs) parts.push(String(hrs).padStart(2,'0') + 'h');
+            parts.push(String(min).padStart(2,'0') + 'm');
+            parts.push(String(sec).padStart(2,'0') + 's');
+            return parts.join(' ');
+        }
+
+        function updateCountdownsManager() {
+            DB.autoCloseExpiredSessions();
+            const sessions = DB.getSessions().filter(s => s.manager === managerEmail);
+            const now = Date.now();
+            for (const s of sessions) {
+                const statusEl = document.getElementById(`status_${s.id}`);
+                const start = s.startDate ? new Date(s.startDate).getTime() : -Infinity;
+                const end = s.endDate ? new Date(s.endDate).getTime() : Infinity;
+                const active = DB.isSessionActive(s);
+                const activeLabelNew = active ? '<span class="status-badge status-approved">Active</span>' : (s.closed ? '<span class="status-badge status-rejected">Closed</span>' : '<span class="status-badge">Inactive</span>');
+                if (statusEl && statusEl.innerHTML !== activeLabelNew) { loadSessions(); return; }
+                const cdEl = document.getElementById(`countdown_${s.id}`);
+                if (!cdEl) continue;
+                if (now < start) {
+                    cdEl.textContent = 'Starts in ' + formatRemaining(start - now);
+                } else if (now <= end && isFinite(end)) {
+                    cdEl.textContent = 'Ends in ' + formatRemaining(end - now);
+                } else {
+                    cdEl.textContent = '';
+                }
+            }
+        }
+
+        setInterval(updateCountdownsManager, 1000);
 
         
 

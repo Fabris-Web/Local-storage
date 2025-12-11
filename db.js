@@ -84,6 +84,36 @@ const DB = {
 		DB.saveSessions(sessions);
 		return session;
 	},
+
+	// Return true if a session should be considered active/open for voting
+	isSessionActive: (session) => {
+		if (!session) return false;
+		if (session.closed) return false; // manually closed
+		const now = Date.now();
+		// parse start/end; treat missing start as immediately available, missing end as no auto-close
+		let start = session.startDate ? (new Date(session.startDate)).getTime() : -Infinity;
+		let end = session.endDate ? (new Date(session.endDate)).getTime() : Infinity;
+		if (isNaN(start)) start = -Infinity;
+		if (isNaN(end)) end = Infinity;
+		// seats requirement: require at least `seats` positions created
+		const seatsNeeded = session.seats || 1;
+		const positionsCount = (session.positions || []).length;
+		return (now >= start && now <= end && positionsCount >= seatsNeeded);
+	},
+
+	// Automatically close any sessions whose endDate has passed
+	autoCloseExpiredSessions: () => {
+		const sessions = DB.getSessions();
+		const now = Date.now();
+		let changed = false;
+		sessions.forEach(s => {
+			if (!s.closed && s.endDate) {
+				const end = new Date(s.endDate).getTime();
+				if (!isNaN(end) && now > end) { s.closed = true; changed = true; }
+			}
+		});
+		if (changed) DB.saveSessions(sessions);
+	},
 	updateSession: (id, patch) => {
 		const sessions = DB.getSessions();
 		const s = sessions.find(x => x.id === id);
