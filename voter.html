@@ -167,6 +167,68 @@
         .btn-submit-votes:hover {
             background: #218838;
         }
+        .results-container {
+            margin-top: 16px;
+            padding: 16px;
+            background: linear-gradient(135deg, #fff9e6 0%, #fff3cc 100%);
+            border-radius: 8px;
+            border: 2px solid #ffc107;
+            position: relative;
+            overflow: hidden;
+        }
+        .results-container::before,
+        .results-container::after {
+            content: '🎉';
+            position: absolute;
+            font-size: 28px;
+            opacity: 0.6;
+            animation: float 3s ease-in-out infinite;
+        }
+        .results-container::before {
+            top: 8px;
+            left: 12px;
+            animation-delay: 0s;
+        }
+        .results-container::after {
+            top: 8px;
+            right: 12px;
+            animation-delay: 0.5s;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .results-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #ff6b00;
+            margin: 0 0 12px 0;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+        .results-content {
+            position: relative;
+            z-index: 1;
+        }
+        .results-position {
+            margin-bottom: 12px;
+            text-align: left;
+        }
+        .results-position-name {
+            font-weight: bold;
+            color: #d9000d;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        .results-candidate-item {
+            padding: 6px 8px;
+            background: rgba(255, 255, 255, 0.8);
+            margin: 4px 0;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #333;
+        }
     </style>
 </head>
 <body>
@@ -300,12 +362,63 @@
                 closedSessions.forEach(s => {
                     const card = document.createElement('div');
                     card.className = 'session-card';
+                    
+                    // Build results section
+                    let resultsContentHtml = '';
+                    const sessionVotes = DB.getVotes().filter(v => v.sessionId === s.id);
+                    const posIds = s.positions || [];
+                    if (posIds.length === 0) {
+                        // Legacy single-choice session results
+                        const votesByCandidate = {};
+                        sessionVotes.forEach(v => {
+                            if (!votesByCandidate[v.candidateId]) votesByCandidate[v.candidateId] = 0;
+                            votesByCandidate[v.candidateId]++;
+                        });
+                        const allCandidates = DB.getCandidates().filter(c => c.sessionId === s.id);
+                        if (allCandidates.length === 0) {
+                            resultsContentHtml += '<p style="color:#666;">No candidates in this session.</p>';
+                        } else {
+                            allCandidates.forEach(c => {
+                                const count = votesByCandidate[c.id] || 0;
+                                resultsContentHtml += `<div class="results-candidate-item">${c.name}: <strong>${count}</strong> vote${count !== 1 ? 's' : ''}</div>`;
+                            });
+                        }
+                    } else {
+                        // Multi-seat session results (grouped by position)
+                        const positions = DB.getPositions().filter(p => posIds.includes(p.id));
+                        if (positions.length === 0) {
+                            resultsContentHtml += '<p style="color:#666;">No seats defined.</p>';
+                        } else {
+                            positions.forEach(pos => {
+                                resultsContentHtml += `<div class="results-position"><div class="results-position-name">${pos.name}</div>`;
+                                const posVotes = sessionVotes.filter(v => v.positionId === pos.id);
+                                const votesByCandidate = {};
+                                posVotes.forEach(v => {
+                                    if (!votesByCandidate[v.candidateId]) votesByCandidate[v.candidateId] = 0;
+                                    votesByCandidate[v.candidateId]++;
+                                });
+                                const posCandidates = DB.getCandidates().filter(c => c.sessionId === s.id && c.positionId === pos.id);
+                                if (posCandidates.length === 0) {
+                                    resultsContentHtml += '<p style="color:#666; margin-left:12px;">No candidates.</p>';
+                                } else {
+                                    posCandidates.forEach(c => {
+                                        const count = votesByCandidate[c.id] || 0;
+                                        resultsContentHtml += `<div class="results-candidate-item">${c.name}: <strong>${count}</strong> vote${count !== 1 ? 's' : ''}</div>`;
+                                    });
+                                }
+                                resultsContentHtml += '</div>';
+                            });
+                        }
+                    }
+                    const resultsHtml = `<div class="results-container"><div class="results-title">🏆 Results</div><div class="results-content">${resultsContentHtml}</div></div>`;
+                    
                     card.innerHTML = `
                         <p class="session-title">${s.title}</p>
                         <p class="session-info">Seats: <strong>${s.seats || 1}</strong></p>
                         <p class="session-dates">${formatDateTime(s.startDate)} to ${formatDateTime(s.endDate)}<div id="countdown_${s.id}" class="session-countdown" style="font-size:12px;color:#666; margin-top:6px;"></div></p>
                         <p class="session-desc">${s.description || ''}</p>
                         <span id="status_${s.id}" class="session-status closed">Closed</span>
+                        ${resultsHtml}
                     `;
                     closedContainer.appendChild(card);
                 });
