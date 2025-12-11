@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voter Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 15px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px #ccc;
+        }
+        .section h2 {
+            color: #28a745;
+            margin-top: 0;
+        }
+        .sessions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+        .session-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+        }
+        .session-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #28a745;
+            margin: 0 0 10px 0;
+        }
+        .session-dates {
+            color: #666;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        .session-desc {
+            color: #555;
+            font-size: 13px;
+            margin: 10px 0;
+            line-height: 1.4;
+        }
+        .session-status {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .session-status.closed {
+            background: #dc3545;
+        }
+        .btn-vote {
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 15px;
+            width: 100%;
+        }
+        .btn-vote:hover {
+            background: #218838;
+        }
+        .voting-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f0f8f0;
+            border-radius: 8px;
+        }
+        .position-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+        .position-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #28a745;
+            margin-bottom: 12px;
+        }
+        .candidate-option {
+            padding: 12px;
+            margin: 8px 0;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .candidate-option:hover {
+            border-color: #28a745;
+            background: #f9fff9;
+        }
+        .candidate-option input[type="radio"] {
+            margin-right: 10px;
+        }
+        .candidate-name {
+            font-weight: bold;
+            color: #333;
+        }
+        .candidate-bio {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+        .no-sessions {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .btn-submit-votes {
+            background: #28a745;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+        .btn-submit-votes:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <div>
+                <h1>Voter Dashboard</h1>
+                <p style="color: #666; margin: 5px 0 0 0;" id="voterEmail">Welcome, Voter</p>
+            </div>
+            <button class="btn" onclick="logout()">Logout</button>
+        </div>
+
+        <!-- Active Sessions -->
+        <div class="section">
+            <h2>Active Voting Sessions</h2>
+            <div id="activeSessions" class="sessions-grid">
+                <!-- Active sessions populated by JavaScript -->
+            </div>
+            <div id="noActiveSessions" class="no-sessions" style="display:none;">
+                <p>No active voting sessions available at this time.</p>
+            </div>
+        </div>
+
+        <!-- Closed Sessions -->
+        <div class="section">
+            <h2>Closed Sessions</h2>
+            <div id="closedSessions" class="sessions-grid">
+                <!-- Closed sessions populated by JavaScript -->
+            </div>
+            <div id="noClosedSessions" class="no-sessions" style="display:none;">
+                <p>No closed sessions yet.</p>
+            </div>
+        </div>
+
+        <!-- Voter Statistics -->
+        <div class="section">
+            <h2>My Participation</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="statsInvitedSessions">0</div>
+                    <div class="stat-label">Invited Sessions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="statsVotedSessions">0</div>
+                    <div class="stat-label">Sessions Voted</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="statsActiveSessions">0</div>
+                    <div class="stat-label">Active Sessions</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="db.js"></script>
+    <script src="logout.js"></script>
+    <script>
+        // Get current voter email from localStorage
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        const voterEmail = currentUser?.email || '';
+        document.getElementById('voterEmail').textContent = 'Welcome, ' + voterEmail;
+
+        let currentVotingSessionId = null;
+
+        // Get sessions this voter is invited to
+        function getInvitedSessions() {
+            const voterInvites = JSON.parse(localStorage.getItem('voterInvites') || '{}');
+            const allSessions = DB.getSessions();
+            const invitedSessionIds = [];
+
+            // Find all sessions where this voter is invited
+            Object.entries(voterInvites).forEach(([sessionId, voters]) => {
+                if (voters.includes(voterEmail)) {
+                    invitedSessionIds.push(sessionId);
+                }
+            });
+
+            return allSessions.filter(s => invitedSessionIds.includes(s.id));
+        }
+
+        // Load and display sessions
+        function loadSessions() {
+            const invitedSessions = getInvitedSessions();
+            const activeSessions = invitedSessions.filter(s => !s.closed);
+            const closedSessions = invitedSessions.filter(s => s.closed);
+
+            const formatDateTime = (dt) => {
+                if (!dt) return '';
+                const d = new Date(dt);
+                return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            };
+
+            // Display active sessions
+            const activeContainer = document.getElementById('activeSessions');
+            activeContainer.innerHTML = '';
+
+            if (activeSessions.length === 0) {
+                document.getElementById('noActiveSessions').style.display = 'block';
+            } else {
+                document.getElementById('noActiveSessions').style.display = 'none';
+                activeSessions.forEach(s => {
+                    const card = document.createElement('div');
+                    card.className = 'session-card';
+                    card.innerHTML = `
+                        <p class="session-title">${s.title}</p>
+                        <p class="session-info">Seats: <strong>${s.seats || 1}</strong></p>
+                        <p class="session-dates">${formatDateTime(s.startDate)} to ${formatDateTime(s.endDate)}</p>
+                        <p class="session-desc">${s.description || ''}</p>
+                        <span class="session-status">Active</span>
+                        <button class="btn-vote" onclick="toggleCastVote('${s.id}')">Cast Vote</button>
+                        <div id="votePanel_${s.id}" style="display:none; margin-top:15px; padding:12px; background:white; border-radius:6px; border:1px solid #ddd;">
+                            <!-- Candidates will be populated here -->
+                        </div>
+                    `;
+                    activeContainer.appendChild(card);
+                });
+            }
+
+            // Display closed sessions
+            const closedContainer = document.getElementById('closedSessions');
+            closedContainer.innerHTML = '';
+
+            if (closedSessions.length === 0) {
+                document.getElementById('noClosedSessions').style.display = 'block';
+            } else {
+                document.getElementById('noClosedSessions').style.display = 'none';
+                closedSessions.forEach(s => {
+                    const card = document.createElement('div');
+                    card.className = 'session-card';
+                    card.innerHTML = `
+                        <p class="session-title">${s.title}</p>
+                        <p class="session-info">Seats: <strong>${s.seats || 1}</strong></p>
+                        <p class="session-dates">${formatDateTime(s.startDate)} to ${formatDateTime(s.endDate)}</p>
+                        <p class="session-desc">${s.description || ''}</p>
+                        <span class="session-status closed">Closed</span>
+                    `;
+                    closedContainer.appendChild(card);
+                });
+            }
+
+            updateStats();
+        }
+
+        // Toggle cast vote panel inline
+        function toggleCastVote(sessionId) {
+            const panel = document.getElementById(`votePanel_${sessionId}`);
+            const isOpen = panel.style.display !== 'none';
+            
+            if (isOpen) {
+                panel.style.display = 'none';
+                currentVotingSessionId = null;
+                return;
+            }
+            
+            // Open the panel
+            panel.style.display = 'block';
+            currentVotingSessionId = sessionId;
+            
+            const session = DB.getSessions().find(s => s.id === sessionId);
+            const candidates = DB.getCandidates().filter(c => c.sessionId === sessionId);
+            
+            let html = '<div style="margin-bottom:10px;"><strong>Select a Candidate:</strong></div>';
+            
+            if (candidates.length === 0) {
+                html += '<p style="color:#666;">No candidates for this session.</p>';
+            } else {
+                candidates.forEach(cand => {
+                    html += `
+                        <label class="candidate-option" style="display:block; margin:8px 0;">
+                            <input type="radio" name="candidate_${sessionId}" value="${cand.id}" />
+                            <span class="candidate-name">${cand.name}</span>
+                            ${cand.bio ? `<div class="candidate-bio">${cand.bio}</div>` : ''}
+                        </label>
+                    `;
+                });
+                html += `
+                    <div style="margin-top:12px;">
+                        <button class="btn-vote" onclick="submitSessionVote('${sessionId}')" style="width:100%;">Submit Vote</button>
+                        <button class="btn" onclick="toggleCastVote('${sessionId}')" style="width:100%; margin-top:6px;">Cancel</button>
+                    </div>
+                `;
+            }
+            
+            panel.innerHTML = html;
+        }
+
+        // Submit vote for a session
+        function submitSessionVote(sessionId) {
+            const selected = document.querySelector(`input[name="candidate_${sessionId}"]:checked`);
+            if (!selected) {
+                return alert('Please select a candidate');
+            }
+
+            const vote = {
+                sessionId: sessionId,
+                positionId: null,
+                candidateId: selected.value,
+                voterEmail: voterEmail,
+                timestamp: new Date().toISOString()
+            };
+
+            DB.addVote(vote);
+            alert('Your vote has been submitted successfully!');
+            
+            // Close the panel and reload
+            document.getElementById(`votePanel_${sessionId}`).style.display = 'none';
+            currentVotingSessionId = null;
+            loadSessions();
+        }
+
+        // Update statistics
+        function updateStats() {
+            const invitedSessions = getInvitedSessions();
+            const activeSessions = invitedSessions.filter(s => !s.closed);
+            const votes = DB.getVotes();
+            const votedSessions = new Set(votes.filter(v => v.voterEmail === voterEmail).map(v => v.sessionId)).size;
+
+            document.getElementById('statsInvitedSessions').textContent = invitedSessions.length;
+            document.getElementById('statsVotedSessions').textContent = votedSessions;
+            document.getElementById('statsActiveSessions').textContent = activeSessions.length;
+        }
+
+        // Initial load
+        loadSessions();
+    </script>
+</body>
+</html>

@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manager Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #ffc107;
+            padding-bottom: 15px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px #ccc;
+        }
+        .section h2 {
+            color: #ffc107;
+            margin-top: 0;
+        }
+        .users-list {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .users-list th, .users-list td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .users-list th {
+            background: #ffc107;
+            color: black;
+        }
+        .users-list tr:hover {
+            background: #f5f5f5;
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-pending { background: #ff9800; color: white; }
+        .status-approved { background: #28a745; color: white; }
+        .status-rejected { background: #dc3545; color: white; }
+        .btn-approve {
+            background: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-approve:hover { background: #218838; }
+        .btn-reject {
+            background: #dc3545;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-reject:hover { background: #c82333; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffc107;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+        .session-badge {
+            background: #ffc107;
+            color: black;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .filter-search {
+            margin-bottom: 15px;
+        }
+        .filter-search input {
+            width: 90%;
+            padding: 10px;
+            border: 1px solid #aaa;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <div>
+                <h1>Manager Dashboard</h1>
+                <p style="color: #666; margin: 5px 0 0 0;" id="managerEmail">Session Manager</p>
+            </div>
+            <button class="btn" onclick="logout()">Logout</button>
+        </div>
+
+        <!-- My Assigned Sessions -->
+        <div class="section">
+            <h2>My Assigned Sessions</h2>
+            <!-- Session edit form (hidden by default) -->
+            <div id="sessionFormSection" style="display:none; margin-bottom:16px; padding:12px; border:1px solid #eee; border-radius:6px;">
+                <h3 id="sessionFormTitle">Edit Session</h3>
+                <form id="sessionForm">
+                    <input type="hidden" id="sessionFormId" />
+                    <div style="margin:6px 0;"><label>Session</label><br/><div id="sessionFormTitleDisplay" style="font-weight:bold; padding:6px 0;">(select a session to edit)</div></div>
+                    <div style="margin:6px 0;"><label>Dates</label><br/><div id="sessionFormDatesDisplay" style="color:#666; padding:6px 0;"></div></div>
+                    <div style="margin:6px 0;"><label>Description</label><br/><div id="sessionFormDescDisplay" style="color:#444; padding:6px 0;"></div></div>
+                    <div style="margin:6px 0;"><label><input type="checkbox" id="sessionFormClosed" /> Closed</label></div>
+                    <div style="margin-top:8px;">
+                        <button class="btn" type="button" onclick="saveSessionForm()">Save</button>
+                        <button class="btn" type="button" onclick="closeSessionForm()">Cancel</button>
+                    </div>
+
+                    <hr/>
+                    <div id="sessionFormInvite" style="margin-top:8px;">
+                        <h4>Invite Voter to this Session</h4>
+                        <div style="display:flex; gap:8px; align-items:center; margin:6px 0;">
+                            <input id="sessionFormInviteInput" placeholder="voter@example.com" style="padding:8px; width:40%;" />
+                            <button class="btn" type="button" onclick="inviteVoterToSessionFromForm()">Invite</button>
+                        </div>
+                    </div>
+                    <div id="sessionFormCandidates" style="margin-top:8px;">
+                        <h4>Candidates for this Session</h4>
+                        <div style="margin:6px 0;">
+                            <label>Invited Voter</label><br/>
+                            <select id="sessionFormVoterSelect" style="width:60%; padding:8px; margin:6px 0;"></select>
+                            <input id="sessionFormCandidateName" placeholder="Display name (optional)" style="width:60%; padding:8px; margin:6px 0;" />
+                            <textarea id="sessionFormCandidateBio" placeholder="Bio (optional)" style="width:60%; padding:8px; margin:6px 0;" rows="2"></textarea>
+                            <div><button class="btn" type="button" onclick="addCandidateFromForm()">Add Candidate</button></div>
+                        </div>
+                        <ul id="sessionFormCandidatesList" style="padding-left:16px;"></ul>
+                    </div>
+                </form>
+            </div>
+            <table class="users-list">
+                <thead>
+                    <tr>
+                        <th>Session Title</th>
+                        <th>Seats</th>
+                        <th>Dates & Times</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="sessionsList">
+                    <!-- Sessions populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Manage Candidates by Session (cards) -->
+        <div class="section">
+            <h2>Manage Candidates (per Session)</h2>
+            <div id="sessionCardsForCandidates">
+                <!-- Session cards rendered here by JavaScript -->
+            </div>
+            <div style="margin-top:20px;">
+                <h3>All Candidates Across My Sessions</h3>
+                <table class="users-list">
+                    <thead>
+                        <tr>
+                            <th>Session</th>
+                            <th>Candidate Name</th>
+                            <th>From Voter</th>
+                            <th>Bio</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="candidatesBySessionList">
+                        <!-- Candidates populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Participation Requests -->
+        <div class="section">
+            <h2>Participation Requests</h2>
+            <div class="filter-search">
+                <input type="text" id="requestFilter" placeholder="Search by voter email...">
+            </div>
+            <table class="users-list">
+                <thead>
+                    <tr>
+                        <th>Voter Email</th>
+                        <th>Session</th>
+                        <th>Status</th>
+                        <th>Requested</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="requestsList">
+                    <!-- Requests populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Session Reports -->
+        <div class="section">
+            <h2>Session Reports</h2>
+            <div>
+                <label>Select Session:</label>
+                <select id="reportSession" style="width:60%; padding:10px; margin: 10px 0;">
+                    <option value="">-- Choose a session --</option>
+                </select>
+            </div>
+            <div style="margin-top:15px;">
+                <button class="btn" onclick="generateApprovedReport()">Download Approved Voters (CSV)</button>
+                <button class="btn" onclick="generateRejectedReport()">Download Rejected Voters (CSV)</button>
+                <button class="btn" onclick="generateVotesSummaryReport()">Download Votes Summary (CSV)</button>
+            </div>
+            <table class="users-list" style="margin-top:20px;">
+                <thead>
+                    <tr>
+                        <th>Session</th>
+                        <th>Approved Voters</th>
+                        <th>Rejected Voters</th>
+                        <th>Total Votes Cast</th>
+                    </tr>
+                </thead>
+                <tbody id="reportsTable">
+                    <!-- Reports populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Session Statistics -->
+        <div class="section">
+            <h2>Session Statistics</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="statsAssignedSessions">0</div>
+                    <div class="stat-label">Assigned Sessions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="statsPendingRequests">0</div>
+                    <div class="stat-label">Pending Requests</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="statsApprovedVoters">0</div>
+                    <div class="stat-label">Approved Voters</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="statsTotalVotes">0</div>
+                    <div class="stat-label">Total Votes Cast</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="db.js"></script>
+    <script src="logout.js"></script>
+    <script>
+        // Get current manager email from localStorage
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        const managerEmail = currentUser?.email || '';
+        document.getElementById('managerEmail').textContent = managerEmail;
+
+        // Load manager's assigned sessions
+        function loadSessions() {
+            const sessions = DB.getSessions();
+            const tbody = document.getElementById('sessionsList');
+            tbody.innerHTML = '';
+
+            // Filter sessions assigned to this manager
+            const assignedSessions = sessions.filter(s => s.manager === managerEmail);
+
+            const reportSelect = document.getElementById('reportSession');
+            reportSelect.innerHTML = '<option value="">-- Choose a session --</option>';
+
+            const formatDateTime = (dt) => {
+                if (!dt) return '';
+                const d = new Date(dt);
+                return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            };
+
+            assignedSessions.forEach(s => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${s.title}</td>
+                    <td>${s.seats || 1} Seats</td>
+                    <td>${formatDateTime(s.startDate)} - ${formatDateTime(s.endDate)}</td>
+                    <td>${s.closed ? '<span class="status-badge status-rejected">Closed</span>' : '<span class="status-badge status-approved">Open</span>'}</td>
+                    <td>
+                        <button class="btn" onclick="toggleSessionStatus('${s.id}')">${s.closed ? 'Reopen' : 'Close'}</button>
+                        <button class="btn" onclick="toggleSessionEditForm('${s.id}')">Edit</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+
+                // Add to report selector
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.title;
+                reportSelect.appendChild(opt);
+
+
+            });
+
+            // Render session tiles/cards for per-session management
+            renderSessionCardsForCandidates(assignedSessions);
+
+            if (assignedSessions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">No sessions assigned to you yet.</td></tr>';
+            }
+
+            loadCandidatesForManagerSessions();
+            updateStats();
+        }
+
+        
+
+        function toggleSessionStatus(sessionId) {
+            const sessions = DB.getSessions();
+            const s = sessions.find(x => x.id === sessionId);
+            if (!s) return alert('Session not found');
+            s.closed = !s.closed;
+            DB.saveSessions(sessions);
+            loadSessions();
+            alert(s.closed ? 'Session closed.' : 'Session reopened.');
+        }
+
+        // Session form helpers
+        function toggleSessionEditForm(sessionId) {
+            const formSection = document.getElementById('sessionFormSection');
+            const currentId = document.getElementById('sessionFormId').value;
+            
+            // If form is open and same session, close it
+            if (formSection.style.display !== 'none' && currentId === sessionId) {
+                closeSessionForm();
+                return;
+            }
+            
+            // Otherwise open the form for this session
+            openSessionForm(sessionId);
+        }
+        
+        function openSessionForm(sessionId) {
+            if (!sessionId) return alert('Managers can only edit existing sessions. Session creation is restricted to Super Admin.');
+            document.getElementById('sessionFormSection').style.display = 'block';
+            document.getElementById('sessionFormTitle').textContent = 'Edit Session';
+            const idEl = document.getElementById('sessionFormId');
+            const closedEl = document.getElementById('sessionFormClosed');
+            idEl.value = '';
+            closedEl.checked = false;
+            document.getElementById('sessionFormCandidatesList').innerHTML = '';
+
+            const s = DB.getSessions().find(x => x.id === sessionId);
+            if (s) {
+                idEl.value = s.id;
+                closedEl.checked = !!s.closed;
+                document.getElementById('sessionFormTitleDisplay').textContent = s.title || '';
+                document.getElementById('sessionFormDatesDisplay').textContent = `${s.startDate || ''} ${s.startDate && s.endDate ? ' - ' : ''} ${s.endDate || ''}`;
+                document.getElementById('sessionFormDescDisplay').textContent = s.description || '';
+            }
+            // populate invited voters and candidates for this session in the form
+            populateSessionFormCandidates(sessionId);
+        }
+
+        function closeSessionForm() {
+            document.getElementById('sessionFormSection').style.display = 'none';
+        }
+
+        function saveSessionForm() {
+            const id = document.getElementById('sessionFormId').value;
+                const closed = document.getElementById('sessionFormClosed').checked;
+            if (!id) return alert('Only Super Admin can create sessions; managers may only edit assigned sessions.');
+                DB.updateSession(id, { closed });
+            alert('Session updated');
+            closeSessionForm();
+            loadSessions();
+        }
+
+        // Candidate helpers for session form
+        function populateSessionFormCandidates(sessionId) {
+            const voterSelect = document.getElementById('sessionFormVoterSelect');
+            const candList = document.getElementById('sessionFormCandidatesList');
+            voterSelect.innerHTML = '';
+            candList.innerHTML = '';
+            if (!sessionId) return;
+            const invites = JSON.parse(localStorage.getItem('voterInvites') || '{}');
+            const voters = invites[sessionId] || [];
+            const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = '-- choose invited voter --';
+            voterSelect.appendChild(placeholder);
+            voters.forEach(v => {
+                const opt = document.createElement('option'); opt.value = v; opt.textContent = v; voterSelect.appendChild(opt);
+            });
+
+            const candidates = DB.getCandidates().filter(c => c.sessionId === sessionId);
+            candidates.forEach(c => {
+                const li = document.createElement('li');
+                li.innerHTML = `${c.name || ''} (${c.fromVoter || ''}) <button class="btn delete-btn" style="background:#dc3545; margin-left:8px;" onclick="removeCandidateFromForm('${c.id}','${sessionId}')">Remove</button>`;
+                candList.appendChild(li);
+            });
+        }
+
+        function addCandidateFromForm() {
+            const sessionId = document.getElementById('sessionFormId').value;
+            if (!sessionId) return alert('Save the session first before adding candidates');
+            const voter = document.getElementById('sessionFormVoterSelect').value;
+            if (!voter) return alert('Select an invited voter');
+            const name = document.getElementById('sessionFormCandidateName').value.trim() || voter.split('@')[0];
+            const bio = document.getElementById('sessionFormCandidateBio').value.trim();
+            DB.addCandidate({ name, bio, positionId: null, sessionId, fromVoter: voter });
+            populateSessionFormCandidates(sessionId);
+            loadCandidatesForManagerSessions();
+            alert(`${name} added as candidate`);
+        }
+
+        function removeCandidateFromForm(candidateId, sessionId) {
+            if (!confirm('Remove this candidate?')) return;
+            DB.deleteCandidate(candidateId);
+            populateSessionFormCandidates(sessionId);
+            loadCandidatesForManagerSessions();
+        }
+
+        // --- Candidate management (per-session cards) ---
+        function renderSessionCardsForCandidates(sessions) {
+            const container = document.getElementById('sessionCardsForCandidates');
+            container.innerHTML = '';
+            sessions.forEach(s => {
+                const card = document.createElement('div');
+                card.style.border = '1px solid #ddd';
+                card.style.padding = '12px';
+                card.style.marginBottom = '12px';
+                card.style.borderRadius = '6px';
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-weight:bold;">${s.title}</div>
+                            <div style="font-size:12px; color:#666;">${s.startDate || ''} - ${s.endDate || ''}</div>
+                        </div>
+                        <div>
+                            <button class="btn" onclick="toggleCandidatePanel('${s.id}')">Add Candidate</button>
+                            <button class="btn" onclick="toggleListView('${s.id}','voters')">Toggle Voters</button>
+                            <button class="btn" onclick="toggleListView('${s.id}','candidates')">Toggle Candidates</button>
+                        </div>
+                    </div>
+                    <div id="candidatePanel_${s.id}" style="display:none; margin-top:10px;">
+                    <label>Invite Voter to this Session</label>
+                    <div style="display:flex; gap:8px; align-items:center; margin:6px 0;">
+                        <input id="inviteInput_${s.id}" placeholder="voter@example.com" style="padding:8px; width:40%;" />
+                        <button class="btn" onclick="inviteVoterToSessionFromCard('${s.id}')">Invite</button>
+                    </div>
+                    <label>Invited Voters</label>
+                    <select id="candidateVoterSelect_${s.id}" style="width:60%; padding:8px; margin:6px 0;">
+                        <option value="">-- Choose invited voter --</option>
+                    </select>
+                    <input id="candidateNameInput_${s.id}" placeholder="Candidate display name (optional)" style="width:60%; padding:8px; margin:6px 0;" />
+                    <textarea id="candidateBioInput_${s.id}" placeholder="Short bio (optional)" style="width:60%; padding:8px; margin:6px 0;" rows="2"></textarea>
+                    <div>
+                        <button class="btn" onclick="addCandidateFromCard('${s.id}')">Add Candidate</button>
+                    </div>
+                    </div>
+                    <div id="votersList_${s.id}" style="display:none; margin-top:10px;">
+                        <h4>Invited Voters</h4>
+                        <ul id="votersList_ul_${s.id}" style="padding-left:16px;"></ul>
+                    </div>
+                    <div id="candidatesList_${s.id}" style="display:none; margin-top:10px;">
+                        <h4>Candidates</h4>
+                        <ul id="candidatesList_ul_${s.id}" style="padding-left:16px;"></ul>
+                    </div>
+                `;
+                container.appendChild(card);
+                populateVotersAndCandidatesForCard(s.id);
+            });
+        }
+
+        function populateVotersAndCandidatesForCard(sessionId) {
+            // populate voters
+            const votersUl = document.getElementById(`votersList_ul_${sessionId}`);
+            const select = document.getElementById(`candidateVoterSelect_${sessionId}`);
+            if (!votersUl || !select) return;
+            votersUl.innerHTML = '';
+            select.innerHTML = '<option value="">-- Choose invited voter --</option>';
+            const data = JSON.parse(localStorage.getItem('voterInvites') || '{}');
+            const voters = data[sessionId] || [];
+            voters.forEach(email => {
+                const li = document.createElement('li');
+                li.innerHTML = `${email} <button class="btn delete-btn" style="background:#dc3545; margin-left:8px;" onclick="removeVoterFromCard('${sessionId}','${email}')">Remove</button>`;
+                votersUl.appendChild(li);
+                const opt = document.createElement('option'); opt.value = email; opt.textContent = email; select.appendChild(opt);
+            });
+
+            // populate candidates
+            const candUl = document.getElementById(`candidatesList_ul_${sessionId}`);
+            candUl.innerHTML = '';
+            const candidates = DB.getCandidates().filter(c => c.sessionId === sessionId);
+            candidates.forEach(c => {
+                const li = document.createElement('li');
+                li.innerHTML = `${c.name || ''} (${c.fromVoter || ''}) <button class="btn delete-btn" style="background:#dc3545; margin-left:8px;" onclick="removeCandidate('${c.id}'); populateVotersAndCandidatesForCard('${sessionId}'); loadCandidatesForManagerSessions();">Remove</button>`;
+                candUl.appendChild(li);
+            });
+        }
+
+        function toggleCandidatePanel(sessionId) {
+            const el = document.getElementById(`candidatePanel_${sessionId}`);
+            if (!el) return;
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function toggleListView(sessionId, type) {
+            const votersEl = document.getElementById(`votersList_${sessionId}`);
+            const candidatesEl = document.getElementById(`candidatesList_${sessionId}`);
+            if (type === 'voters') {
+                votersEl.style.display = votersEl.style.display === 'none' ? 'block' : 'none';
+            } else {
+                candidatesEl.style.display = candidatesEl.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+
+        function addCandidateFromCard(sessionId) {
+            const voterSelect = document.getElementById(`candidateVoterSelect_${sessionId}`);
+            const nameInput = document.getElementById(`candidateNameInput_${sessionId}`);
+            const bioInput = document.getElementById(`candidateBioInput_${sessionId}`);
+            const voterEmail = voterSelect.value;
+            if (!voterEmail) return alert('Please select an invited voter to promote');
+            const displayName = nameInput.value.trim() || voterEmail.split('@')[0];
+            const bio = bioInput.value.trim();
+            DB.addCandidate({ name: displayName, bio: bio, positionId: null, sessionId: sessionId, fromVoter: voterEmail });
+            populateVotersAndCandidatesForCard(sessionId);
+            loadCandidatesForManagerSessions();
+            alert(`${displayName} added as candidate for the session.`);
+        }
+
+        function removeCandidate(id) {
+            if (!confirm('Remove this candidate?')) return;
+            DB.deleteCandidate(id);
+            loadCandidatesForManagerSessions();
+        }
+
+        // Invite a voter directly from a session card
+        function inviteVoterToSessionFromCard(sessionId) {
+            const input = document.getElementById(`inviteInput_${sessionId}`);
+            if (!input) return;
+            const email = input.value.trim().toLowerCase();
+            if (!email) return alert('Enter an email');
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) return alert('Enter a valid email');
+            const data = JSON.parse(localStorage.getItem('voterInvites') || '{}');
+            data[sessionId] = data[sessionId] || [];
+            if (data[sessionId].includes(email)) return alert('This voter is already invited to this session');
+            data[sessionId].push(email);
+            localStorage.setItem('voterInvites', JSON.stringify(data));
+            input.value = '';
+            populateVotersAndCandidatesForCard(sessionId);
+            alert(`${email} invited to session.`);
+        }
+
+        function removeVoterFromCard(sessionId, email) {
+            if (!confirm(`Remove ${email} from this session?`)) return;
+            const data = JSON.parse(localStorage.getItem('voterInvites') || '{}');
+            if (data[sessionId]) {
+                data[sessionId] = data[sessionId].filter(v => v !== email);
+                if (data[sessionId].length === 0) delete data[sessionId];
+            }
+            localStorage.setItem('voterInvites', JSON.stringify(data));
+            populateVotersAndCandidatesForCard(sessionId);
+            alert('Voter removed');
+        }
+
+        // Invite from session form
+        function inviteVoterToSessionFromForm() {
+            const sessionId = document.getElementById('sessionFormId').value;
+            if (!sessionId) return alert('Cannot invite: session not selected');
+            const input = document.getElementById('sessionFormInviteInput');
+            if (!input) return;
+            const email = input.value.trim().toLowerCase();
+            if (!email) return alert('Enter an email');
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) return alert('Enter a valid email');
+            const data = JSON.parse(localStorage.getItem('voterInvites') || '{}');
+            data[sessionId] = data[sessionId] || [];
+            if (data[sessionId].includes(email)) return alert('This voter is already invited to this session');
+            data[sessionId].push(email);
+            localStorage.setItem('voterInvites', JSON.stringify(data));
+            input.value = '';
+            populateSessionFormCandidates(sessionId);
+            populateVotersAndCandidatesForCard(sessionId);
+            alert(`${email} invited to session.`);
+        }
+        // Load candidates for all sessions assigned to this manager
+        function loadCandidatesForManagerSessions() {
+            const sessions = DB.getSessions().filter(s => s.manager === managerEmail);
+            const tbody = document.getElementById('candidatesBySessionList');
+            tbody.innerHTML = '';
+        }
+
+        // Load participation requests
+        function loadRequests() {
+            const requests = DB.getRequests();
+            const sessions = DB.getSessions();
+            const tbody = document.getElementById('requestsList');
+            tbody.innerHTML = '';
+
+            // Filter requests for sessions assigned to this manager
+            const assignedSessionIds = sessions.filter(s => s.manager === managerEmail).map(s => s.id);
+            const relevantRequests = requests.filter(r => assignedSessionIds.includes(r.sessionId));
+
+            relevantRequests.forEach(req => {
+                const session = sessions.find(s => s.id === req.sessionId);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${req.voterEmail}</td>
+                    <td>${session ? session.title : ''}</td>
+                    <td><span class="status-badge status-${req.status}">${req.status.toUpperCase()}</span></td>
+                    <td>${req.requestedAt || ''}</td>
+                    <td>
+                        ${req.status === 'pending' ? `
+                            <button class="btn-approve" onclick="approveRequest('${req.id}')">Approve</button>
+                            <button class="btn-reject" onclick="rejectRequest('${req.id}')">Reject</button>
+                        ` : ''}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            if (relevantRequests.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">No participation requests.</td></tr>';
+            }
+        }
+
+        function approveRequest(requestId) {
+            DB.updateRequest(requestId, { status: 'approved' });
+            loadRequests();
+            updateStats();
+            alert('Request approved.');
+        }
+
+        function rejectRequest(requestId) {
+            DB.updateRequest(requestId, { status: 'rejected' });
+            loadRequests();
+            updateStats();
+            alert('Request rejected.');
+        }
+
+        // Search/filter requests
+        document.getElementById('requestFilter').addEventListener('keyup', function() {
+            const filter = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#requestsList tr');
+            rows.forEach(row => {
+                const email = row.cells[0]?.textContent.toLowerCase() || '';
+                row.style.display = email.includes(filter) ? '' : 'none';
+            });
+        });
+
+
+
+        // CSV Export functions
+        function generateApprovedReport() {
+            const sessionId = document.getElementById('reportSession').value;
+            if (!sessionId) return alert('Please select a session');
+
+            const requests = DB.getRequests().filter(r => r.sessionId === sessionId && r.status === 'approved');
+            const session = DB.getSessions().find(s => s.id === sessionId);
+            const csv = 'Voter Email\n' + requests.map(r => r.voterEmail).join('\n');
+            downloadCSV(csv, `approved_voters_${session.title.replace(/\s+/g, '_')}.csv`);
+        }
+
+        function generateRejectedReport() {
+            const sessionId = document.getElementById('reportSession').value;
+            if (!sessionId) return alert('Please select a session');
+
+            const requests = DB.getRequests().filter(r => r.sessionId === sessionId && r.status === 'rejected');
+            const session = DB.getSessions().find(s => s.id === sessionId);
+            const csv = 'Voter Email\n' + requests.map(r => r.voterEmail).join('\n');
+            downloadCSV(csv, `rejected_voters_${session.title.replace(/\s+/g, '_')}.csv`);
+        }
+
+        function generateVotesSummaryReport() {
+            const sessionId = document.getElementById('reportSession').value;
+            if (!sessionId) return alert('Please select a session');
+
+            const votes = DB.getVotes().filter(v => v.sessionId === sessionId);
+            const session = DB.getSessions().find(s => s.id === sessionId);
+            const positions = DB.getPositions();
+            const candidates = DB.getCandidates();
+
+            let csv = 'Position,Candidate,Vote Count\n';
+            const voteCount = {};
+
+            votes.forEach(v => {
+                const key = `${v.positionId}|${v.candidateId}`;
+                voteCount[key] = (voteCount[key] || 0) + 1;
+            });
+
+            Object.entries(voteCount).forEach(([key, count]) => {
+                const [posId, candId] = key.split('|');
+                const pos = positions.find(p => p.id === posId);
+                const cand = candidates.find(c => c.id === candId);
+                csv += `${pos ? pos.name : ''},${cand ? cand.name : ''},${count}\n`;
+            });
+
+            downloadCSV(csv, `votes_summary_${session.title.replace(/\s+/g, '_')}.csv`);
+        }
+
+        function downloadCSV(csv, filename) {
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Generate reports summary table
+        function generateReportsSummary() {
+            const sessions = DB.getSessions().filter(s => s.manager === managerEmail);
+            const tbody = document.getElementById('reportsTable');
+            tbody.innerHTML = '';
+
+            sessions.forEach(s => {
+                const requests = DB.getRequests().filter(r => r.sessionId === s.id);
+                const approvedCount = requests.filter(r => r.status === 'approved').length;
+                const rejectedCount = requests.filter(r => r.status === 'rejected').length;
+                const votes = DB.getVotes().filter(v => v.sessionId === s.id).length;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${s.title}</td>
+                    <td>${approvedCount}</td>
+                    <td>${rejectedCount}</td>
+                    <td>${votes}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Update statistics
+        function updateStats() {
+            const sessions = DB.getSessions().filter(s => s.manager === managerEmail);
+            const requests = DB.getRequests().filter(r => sessions.map(s => s.id).includes(r.sessionId));
+            const approvedRequests = requests.filter(r => r.status === 'approved').length;
+            const votes = DB.getVotes().filter(v => sessions.map(s => s.id).includes(v.sessionId)).length;
+            const pendingRequests = requests.filter(r => r.status === 'pending').length;
+
+            document.getElementById('statsAssignedSessions').textContent = sessions.length;
+            document.getElementById('statsPendingRequests').textContent = pendingRequests;
+            document.getElementById('statsApprovedVoters').textContent = approvedRequests;
+            document.getElementById('statsTotalVotes').textContent = votes;
+        }
+
+        // Initial load
+        loadSessions();
+        loadRequests();
+        generateReportsSummary();
+    </script>
+</body>
+</html> 

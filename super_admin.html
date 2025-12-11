@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Super Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 15px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px #ccc;
+        }
+        .section h2 {
+            color: #007bff;
+            margin-top: 0;
+        }
+        .users-list {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .users-list th, .users-list td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .users-list th {
+            background: #007bff;
+            color: white;
+        }
+        .users-list tr:hover {
+            background: #f5f5f5;
+        }
+        .role-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .role-super_admin { background: #dc3545; color: white; }
+        .role-manager { background: #ffc107; color: black; }
+        .role-voter { background: #28a745; color: white; }
+        .delete-btn {
+            background: #dc3545;
+            padding: 5px 10px;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+        .delete-btn:hover {
+            background: #c82333;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <div>
+                <h1>Super Admin Dashboard</h1>
+                <p style="color: #666; margin: 5px 0 0 0;">System Administrator</p>
+            </div>
+            <button class="btn" onclick="logout()">Logout</button>
+        </div>
+
+        <!-- System Statistics -->
+        <div class="section">
+            <h2>System Statistics</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalUsers">0</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalAdmins">0</div>
+                    <div class="stat-label">Super Admins</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalManagers">0</div>
+                    <div class="stat-label">Managers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalVoters">0</div>
+                    <div class="stat-label">Voters</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invite New User -->
+        <div class="section">
+            <h2>Invite New Manager</h2>
+            <form id="inviteForm">
+                <input id="inviteEmail" type="email" placeholder="User Email" required style="width: 90%; padding: 10px; margin: 8px 0; border: 1px solid #aaa; border-radius: 5px;">
+                <select id="role" style="width: 90%; padding: 10px; margin: 8px 0; border: 1px solid #aaa; border-radius: 5px;">
+                    <option value="">-- Select Role --</option>
+                    <option value="super_admin">Super Admin</option>
+                    <option value="manager">Manager</option>
+                </select>
+                <button class="btn" type="submit" style="margin-top: 10px;">Invite Manager</button>
+            </form>
+        </div>
+
+        <!-- User Management -->
+        <div class="section">
+            <h2>User Management</h2>
+            <div style="margin-bottom:15px;">
+                <label>Select User:</label>
+                <select id="userSelect" style="width:100%; max-width:400px; padding:10px; margin:8px 0; border:1px solid #aaa; border-radius:5px;">
+                    <option value="">-- Choose a user --</option>
+                </select>
+            </div>
+            <div id="userDetailsPanel" style="display:none; padding:15px; background:#f9f9f9; border-radius:6px; border:1px solid #ddd; margin-bottom:15px;">
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
+                    <div>
+                        <label>Email</label><br/>
+                        <div id="userDetailEmail" style="padding:8px; background:white; border:1px solid #ddd; border-radius:4px;"></div>
+                    </div>
+                    <div>
+                        <label>Role</label><br/>
+                        <div id="userDetailRole" style="padding:8px; background:white; border:1px solid #ddd; border-radius:4px;"></div>
+                    </div>
+                    <div>
+                        <label>Password</label><br/>
+                        <div id="userDetailPassword" style="padding:8px; background:white; border:1px solid #ddd; border-radius:4px;"></div>
+                    </div>
+                    <div>
+                        <label>Status</label><br/>
+                        <div id="userDetailStatus" style="padding:8px; background:white; border:1px solid #ddd; border-radius:4px;"></div>
+                    </div>
+                </div>
+                <div style="margin-top:12px;">
+                    <button class="btn" type="button" onclick="toggleUserStatus()">Toggle Status</button>
+                    <button class="btn delete-btn" type="button" onclick="deleteSelectedUser()">Delete User</button>
+                </div>
+            </div>
+            <table class="users-list" style="display:none;" id="usersListTable">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Password</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="usersList">
+                    <!-- Users populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Sessions Management -->
+        <div class="section">
+            <h2>Voting Sessions</h2>
+            <form id="createSessionForm">
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:12px;">
+                    <div>
+                        <label>Session Title *</label><br/>
+                        <input id="sessionTitle" placeholder="Session Title" required style="width:100%; padding:8px; border:1px solid #aaa; border-radius:5px;" />
+                    </div>
+                    <div>
+                        <label>Number of Seats *</label><br/>
+                        <input id="sessionSeats" type="number" placeholder="Seats" min="1" required style="width:100%; padding:8px; border:1px solid #aaa; border-radius:5px;" />
+                    </div>
+                    <div>
+                        <label>Assign Manager</label><br/>
+                        <select id="sessionManager" style="width:100%; padding:8px; border:1px solid #aaa; border-radius:5px;">
+                            <option value="">-- Optional --</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:12px;">
+                    <div>
+                        <label>Start Date & Time *</label><br/>
+                        <input id="sessionStart" type="datetime-local" required style="width:100%; padding:8px; border:1px solid #aaa; border-radius:5px;" />
+                    </div>
+                    <div>
+                        <label>End Date & Time *</label><br/>
+                        <input id="sessionEnd" type="datetime-local" required style="width:100%; padding:8px; border:1px solid #aaa; border-radius:5px;" />
+                    </div>
+                </div>
+                <div>
+                    <label>Description</label><br/>
+                    <textarea id="sessionDesc" placeholder="Session description" style="width:100%; padding:8px; border:1px solid #aaa; border-radius:5px;" rows="3"></textarea>
+                </div>
+                <button class="btn" type="submit" style="margin-top:10px;">Create Session</button>
+            </form>
+            <table class="users-list" style="margin-top:15px;">
+                <thead>
+                    <tr><th>Title</th><th>Seats</th><th>Dates & Times</th><th>Manager</th><th>Status</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="sessionsList"></tbody>
+            </table>
+        </div>
+
+        <!-- Analytics -->
+        <div class="section">
+            <h2>Monitoring & Analytics</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="analyticsVoters">0</div>
+                    <div class="stat-label">Number of Voters</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="analyticsRequests">0</div>
+                    <div class="stat-label">Participation Requests</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="analyticsVotes">0</div>
+                    <div class="stat-label">Total Votes</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Settings -->
+        <div class="section">
+            <h2>System Settings</h2>
+            <label>System Name</label>
+            <input id="sysName" style="width:60%;" />
+            <label>Rules</label>
+            <input id="sysRules" style="width:60%;" />
+            <button class="btn" id="saveSettingsBtn" style="display:block; margin-top:10px;">Save Settings</button>
+        </div>
+    </div>
+
+    <script src="db.js"></script>
+    <script src="logout.js"></script>
+    <script src="invite.js"></script>
+    <script>
+        // Load and display users with dropdown
+        function loadUsers() {
+            const users = DB.getUsers();
+            const select = document.getElementById('userSelect');
+            select.innerHTML = '<option value="">-- Choose a user --</option>';
+            
+            users.forEach(user => {
+                const opt = document.createElement('option');
+                opt.value = user.email;
+                opt.textContent = `${user.email} (${user.role.replace('_', ' ').toUpperCase()})`;
+                select.appendChild(opt);
+            });
+
+            updateStats();
+        }
+
+        // Show user details when selected
+        document.getElementById('userSelect').addEventListener('change', function() {
+            const email = this.value;
+            if (!email) {
+                document.getElementById('userDetailsPanel').style.display = 'none';
+                return;
+            }
+            
+            const users = DB.getUsers();
+            const user = users.find(u => u.email === email);
+            if (!user) return;
+            
+            document.getElementById('userDetailEmail').textContent = user.email;
+            document.getElementById('userDetailRole').textContent = user.role.replace('_', ' ').toUpperCase();
+            document.getElementById('userDetailPassword').textContent = user.password || '';
+            document.getElementById('userDetailStatus').innerHTML = user.active === false 
+                ? '<span style="color:#c82333;">Deactivated</span>' 
+                : '<span style="color:#28a745;">Active</span>';
+            
+            document.getElementById('userDetailsPanel').style.display = 'block';
+        });
+
+        function toggleUserStatus() {
+            const email = document.getElementById('userSelect').value;
+            if (!email) return alert('No user selected');
+            const users = DB.getUsers();
+            const u = users.find(x => x.email === email);
+            if (!u) return alert('User not found');
+            const newState = !(u.active === true);
+            DB.setUserActive(email, newState);
+            loadUsers();
+            document.getElementById('userSelect').value = '';
+            document.getElementById('userDetailsPanel').style.display = 'none';
+            alert(`User status updated.`);
+        }
+
+        function deleteSelectedUser() {
+            const email = document.getElementById('userSelect').value;
+            if (!email) return alert('No user selected');
+            if (confirm(`Are you sure you want to delete ${email}?`)) {
+                DB.deleteUser(email);
+                loadUsers();
+                document.getElementById('userSelect').value = '';
+                document.getElementById('userDetailsPanel').style.display = 'none';
+                alert(`User ${email} deleted successfully.`);
+            }
+        }
+
+
+
+        function toggleActive(email) {
+            const users = DB.getUsers();
+            const u = users.find(x => x.email === email);
+            if (!u) return alert('User not found');
+            const newState = !(u.active === true);
+            DB.setUserActive(email, newState);
+            loadUsers();
+        }
+
+        // Delete user
+        function deleteUser(email) {
+            if (confirm(`Are you sure you want to delete ${email}?`)) {
+                DB.deleteUser(email);
+                loadUsers();
+                alert(`User ${email} deleted successfully.`);
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            const users = DB.getUsers();
+            document.getElementById('totalUsers').textContent = users.length;
+            document.getElementById('totalAdmins').textContent = users.filter(u => u.role === 'super_admin').length;
+            document.getElementById('totalManagers').textContent = users.filter(u => u.role === 'manager').length;
+            document.getElementById('totalVoters').textContent = users.filter(u => u.role === 'voter').length;
+        }
+
+        // Sessions
+        function loadSessions() {
+            const sessions = DB.getSessions();
+            const tbody = document.getElementById('sessionsList');
+            tbody.innerHTML = '';
+
+            // populate manager select for session creation
+            const mgrSel = document.getElementById('sessionManager');
+            mgrSel.innerHTML = '<option value="">Assign Manager (optional)</option>';
+            const managers = DB.getUsers().filter(u => u.role === 'manager' && u.active !== false);
+            managers.forEach(m => {
+                const mo = document.createElement('option'); mo.value = m.email; mo.textContent = m.email; mgrSel.appendChild(mo);
+            });
+
+            sessions.forEach(s => {
+                const row = document.createElement('tr');
+                const managerLabel = s.manager || '';
+                const formatDateTime = (dt) => {
+                    if (!dt) return '';
+                    const d = new Date(dt);
+                    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                };
+                row.innerHTML = `
+                    <td>${s.title}</td>
+                    <td>${s.seats || 1}</td>
+                    <td>${formatDateTime(s.startDate)} - ${formatDateTime(s.endDate)}</td>
+                    <td>${managerLabel}</td>
+                    <td>${s.closed ? 'Closed' : 'Open'}</td>
+                    <td>
+                      <button class="btn" onclick="closeSession('${s.id}')">Close</button>
+                      <button class="btn" onclick="deleteSession('${s.id}')">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            updateAnalytics();
+        }
+
+        document.getElementById('createSessionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const title = document.getElementById('sessionTitle').value;
+            const startDate = document.getElementById('sessionStart').value;
+            const endDate = document.getElementById('sessionEnd').value;
+            const desc = document.getElementById('sessionDesc').value;
+            const manager = document.getElementById('sessionManager').value || null;
+            const seats = parseInt(document.getElementById('sessionSeats').value) || 1;
+            DB.addSession({ title, startDate, endDate, description: desc, manager, seats });
+            document.getElementById('createSessionForm').reset();
+            loadSessions();
+            alert('Session created');
+        });
+
+        function closeSession(id) { if (confirm('Close this session?')) { DB.closeSession(id); loadSessions(); } }
+        function deleteSession(id) { if (confirm('Delete this session?')) { DB.deleteSession(id); loadSessions(); } }
+
+        
+
+        // Analytics
+        function updateAnalytics() {
+            const voters = DB.getUsers().filter(u => u.role === 'voter' && u.active !== false).length;
+            const requests = DB.getRequests().length;
+            const votes = DB.getVotes().length;
+            document.getElementById('analyticsVoters').textContent = voters;
+            document.getElementById('analyticsRequests').textContent = requests;
+            document.getElementById('analyticsVotes').textContent = votes;
+        }
+
+        // Settings
+        document.getElementById('saveSettingsBtn').addEventListener('click', function() {
+            const name = document.getElementById('sysName').value;
+            const rules = document.getElementById('sysRules').value;
+            DB.updateSettings({ name: name || undefined, rules: rules || undefined });
+            alert('Settings saved');
+        });
+
+        // Initial load
+        loadUsers();
+        loadSessions();
+
+        // Reload users after invite
+        document.getElementById('inviteForm').addEventListener('submit', function() {
+            setTimeout(() => { loadUsers(); updateAnalytics(); }, 200);
+        });
+    </script>
+</body>
+</html> 
