@@ -148,12 +148,24 @@
                             <button class="btn" type="button" onclick="inviteVoterToSessionFromForm()">Invite</button>
                         </div>
                     </div>
+                    <hr/>
+                    <div id="sessionFormSeats" style="margin-top:8px;">
+                        <h4>Seats (Positions) for this Session</h4>
+                        <div style="display:flex; gap:8px; align-items:center; margin:6px 0;">
+                            <input id="sessionFormSeatName" placeholder="Seat name (e.g. President)" style="padding:8px; width:40%;" />
+                            <button class="btn" type="button" onclick="addSeatFromForm()">Add Seat</button>
+                        </div>
+                        <ul id="sessionFormSeatsList" style="padding-left:16px;"></ul>
+                    </div>
                     <div id="sessionFormCandidates" style="margin-top:8px;">
                         <h4>Candidates for this Session</h4>
                         <div style="margin:6px 0;">
                             <label>Invited Voter</label><br/>
                             <select id="sessionFormVoterSelect" style="width:60%; padding:8px; margin:6px 0;"></select>
-                            <input id="sessionFormCandidateName" placeholder="Display name (optional)" style="width:60%; padding:8px; margin:6px 0;" />
+                            <div style="margin:6px 0; display:flex; gap:8px; align-items:center;">
+                                <input id="sessionFormCandidateName" placeholder="Display name (optional)" style="flex:1; padding:8px;" />
+                                <select id="sessionFormSeatSelect" style="width:200px; padding:8px;"></select>
+                            </div>
                             <textarea id="sessionFormCandidateBio" placeholder="Bio (optional)" style="width:60%; padding:8px; margin:6px 0;" rows="2"></textarea>
                             <div><button class="btn" type="button" onclick="addCandidateFromForm()">Add Candidate</button></div>
                         </div>
@@ -415,12 +427,70 @@
                 const opt = document.createElement('option'); opt.value = v; opt.textContent = v; voterSelect.appendChild(opt);
             });
 
+            // populate seat select for assigning candidates
+            populateSessionFormSeats(sessionId);
+
             const candidates = DB.getCandidates().filter(c => c.sessionId === sessionId);
             candidates.forEach(c => {
+                const pos = c.positionId ? DB.getPositions().find(p => p.id === c.positionId) : null;
                 const li = document.createElement('li');
-                li.innerHTML = `${c.name || ''} (${c.fromVoter || ''}) <button class="btn delete-btn" style="background:#dc3545; margin-left:8px;" onclick="removeCandidateFromForm('${c.id}','${sessionId}')">Remove</button>`;
+                li.innerHTML = `${c.name || ''} ${pos ? '('+pos.name+')' : ''} (${c.fromVoter || ''}) <button class="btn delete-btn" style="background:#dc3545; margin-left:8px;" onclick="removeCandidateFromForm('${c.id}','${sessionId}')">Remove</button>`;
                 candList.appendChild(li);
             });
+        }
+
+        // Seats (positions) helpers
+        function populateSessionFormSeats(sessionId) {
+            const seatsUl = document.getElementById('sessionFormSeatsList');
+            const seatSelect = document.getElementById('sessionFormSeatSelect');
+            seatsUl.innerHTML = '';
+            seatSelect.innerHTML = '<option value="">-- Select seat (optional) --</option>';
+            if (!sessionId) return;
+            const s = DB.getSessions().find(x => x.id === sessionId);
+            const posIds = s?.positions || [];
+            const positions = DB.getPositions().filter(p => posIds.includes(p.id));
+            positions.forEach(p => {
+                const li = document.createElement('li');
+                li.innerHTML = `<input value="${p.name}" onchange="updateSeatName('${p.id}', this.value)" style="padding:6px; width:60%;" /> <button class="btn" style="background:#dc3545; margin-left:8px;" onclick="removeSeatFromForm('${p.id}','${sessionId}')">Remove</button>`;
+                seatsUl.appendChild(li);
+
+                const opt = document.createElement('option'); opt.value = p.id; opt.textContent = p.name; seatSelect.appendChild(opt);
+            });
+        }
+
+        function addSeatFromForm() {
+            const sessionId = document.getElementById('sessionFormId').value;
+            const name = document.getElementById('sessionFormSeatName').value.trim();
+            if (!sessionId) return alert('Save the session first before adding seats');
+            if (!name) return alert('Enter a seat name');
+            const pos = DB.addPosition({ name: name, sessionId });
+            // attach to session
+            const s = DB.getSessions().find(x => x.id === sessionId);
+            s.positions = s.positions || [];
+            s.positions.push(pos.id);
+            DB.updateSession(sessionId, { positions: s.positions });
+            document.getElementById('sessionFormSeatName').value = '';
+            populateSessionFormSeats(sessionId);
+            populateSessionFormCandidates(sessionId);
+            loadCandidatesForManagerSessions();
+        }
+
+        function removeSeatFromForm(positionId, sessionId) {
+            if (!confirm('Remove this seat (position)? Candidates assigned to it will remain unassigned.')) return;
+            DB.deletePosition(positionId);
+            const s = DB.getSessions().find(x => x.id === sessionId);
+            s.positions = (s.positions || []).filter(pid => pid !== positionId);
+            DB.updateSession(sessionId, { positions: s.positions });
+            populateSessionFormSeats(sessionId);
+            populateSessionFormCandidates(sessionId);
+            loadCandidatesForManagerSessions();
+        }
+
+        function updateSeatName(positionId, newName) {
+            DB.updatePosition(positionId, { name: newName });
+            populateSessionFormSeats(document.getElementById('sessionFormId').value);
+            populateVotersAndCandidatesForCard(document.getElementById('sessionFormId').value);
+            loadCandidatesForManagerSessions();
         }
 
         function addCandidateFromForm() {
@@ -429,8 +499,9 @@
             const voter = document.getElementById('sessionFormVoterSelect').value;
             if (!voter) return alert('Select an invited voter');
             const name = document.getElementById('sessionFormCandidateName').value.trim() || voter.split('@')[0];
+            const positionId = document.getElementById('sessionFormSeatSelect').value || null;
             const bio = document.getElementById('sessionFormCandidateBio').value.trim();
-            DB.addCandidate({ name, bio, positionId: null, sessionId, fromVoter: voter });
+            DB.addCandidate({ name, bio, positionId: positionId, sessionId, fromVoter: voter });
             populateSessionFormCandidates(sessionId);
             loadCandidatesForManagerSessions();
             alert(`${name} added as candidate`);
@@ -475,7 +546,10 @@
                     <select id="candidateVoterSelect_${s.id}" style="width:60%; padding:8px; margin:6px 0;">
                         <option value="">-- Choose invited voter --</option>
                     </select>
-                    <input id="candidateNameInput_${s.id}" placeholder="Candidate display name (optional)" style="width:60%; padding:8px; margin:6px 0;" />
+                    <div style="display:flex; gap:8px; align-items:center; margin:6px 0;">
+                        <input id="candidateNameInput_${s.id}" placeholder="Candidate display name (optional)" style="flex:1; padding:8px;" />
+                        <select id="candidateSeatSelect_${s.id}" style="width:200px; padding:8px;"></select>
+                    </div>
                     <textarea id="candidateBioInput_${s.id}" placeholder="Short bio (optional)" style="width:60%; padding:8px; margin:6px 0;" rows="2"></textarea>
                     <div>
                         <button class="btn" onclick="addCandidateFromCard('${s.id}')">Add Candidate</button>
@@ -515,11 +589,33 @@
             const candUl = document.getElementById(`candidatesList_ul_${sessionId}`);
             candUl.innerHTML = '';
             const candidates = DB.getCandidates().filter(c => c.sessionId === sessionId);
-            candidates.forEach(c => {
-                const li = document.createElement('li');
-                li.innerHTML = `${c.name || ''} (${c.fromVoter || ''}) <button class="btn delete-btn" style="background:#dc3545; margin-left:8px;" onclick="removeCandidate('${c.id}'); populateVotersAndCandidatesForCard('${sessionId}'); loadCandidatesForManagerSessions();">Remove</button>`;
-                candUl.appendChild(li);
+            const positions = DB.getPositions().filter(p => (DB.getSessions().find(s => s.id === sessionId)?.positions || []).includes(p.id));
+            // show candidates grouped by position
+            const unassigned = candidates.filter(c => !c.positionId);
+            positions.forEach(p => {
+                const header = document.createElement('li');
+                header.innerHTML = `<strong>${p.name}</strong>`;
+                candUl.appendChild(header);
+                candidates.filter(c => c.positionId === p.id).forEach(c => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `${c.name || ''} (${c.fromVoter || ''}) <button class="btn delete-btn" style="background:#dc3545; margin-left:8px;" onclick="removeCandidate('${c.id}'); populateVotersAndCandidatesForCard('${sessionId}'); loadCandidatesForManagerSessions();">Remove</button>`;
+                    candUl.appendChild(li);
+                });
             });
+            if (unassigned.length) {
+                const header = document.createElement('li'); header.innerHTML = `<strong>Unassigned</strong>`; candUl.appendChild(header);
+                unassigned.forEach(c => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `${c.name || ''} (${c.fromVoter || ''}) <button class="btn delete-btn" style="background:#dc3545; margin-left:8px;" onclick="removeCandidate('${c.id}'); populateVotersAndCandidatesForCard('${sessionId}'); loadCandidatesForManagerSessions();">Remove</button>`;
+                    candUl.appendChild(li);
+                });
+            }
+            // populate seat select for card
+            const seatSelect = document.getElementById(`candidateSeatSelect_${sessionId}`);
+            if (seatSelect) {
+                seatSelect.innerHTML = '<option value="">-- Select seat (optional) --</option>';
+                positions.forEach(p => { const opt = document.createElement('option'); opt.value = p.id; opt.textContent = p.name; seatSelect.appendChild(opt); });
+            }
         }
 
         function toggleCandidatePanel(sessionId) {
@@ -542,11 +638,13 @@
             const voterSelect = document.getElementById(`candidateVoterSelect_${sessionId}`);
             const nameInput = document.getElementById(`candidateNameInput_${sessionId}`);
             const bioInput = document.getElementById(`candidateBioInput_${sessionId}`);
+            const seatSelect = document.getElementById(`candidateSeatSelect_${sessionId}`);
             const voterEmail = voterSelect.value;
             if (!voterEmail) return alert('Please select an invited voter to promote');
             const displayName = nameInput.value.trim() || voterEmail.split('@')[0];
             const bio = bioInput.value.trim();
-            DB.addCandidate({ name: displayName, bio: bio, positionId: null, sessionId: sessionId, fromVoter: voterEmail });
+            const positionId = seatSelect ? (seatSelect.value || null) : null;
+            DB.addCandidate({ name: displayName, bio: bio, positionId: positionId, sessionId: sessionId, fromVoter: voterEmail });
             populateVotersAndCandidatesForCard(sessionId);
             loadCandidatesForManagerSessions();
             alert(`${displayName} added as candidate for the session.`);

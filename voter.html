@@ -310,67 +310,111 @@
             updateStats();
         }
 
-        // Toggle cast vote panel inline
+        // Toggle cast vote panel inline (supports multi-seat sessions)
         function toggleCastVote(sessionId) {
             const panel = document.getElementById(`votePanel_${sessionId}`);
             const isOpen = panel.style.display !== 'none';
-            
+
             if (isOpen) {
                 panel.style.display = 'none';
                 currentVotingSessionId = null;
                 return;
             }
-            
+
             // Open the panel
             panel.style.display = 'block';
             currentVotingSessionId = sessionId;
-            
+
             const session = DB.getSessions().find(s => s.id === sessionId);
             const candidates = DB.getCandidates().filter(c => c.sessionId === sessionId);
-            
-            let html = '<div style="margin-bottom:10px;"><strong>Select a Candidate:</strong></div>';
-            
-            if (candidates.length === 0) {
-                html += '<p style="color:#666;">No candidates for this session.</p>';
+
+            let html = '<div style="margin-bottom:10px;"><strong>Select candidates for each seat (if available):</strong></div>';
+
+            const posIds = session?.positions || [];
+            if (posIds.length === 0) {
+                // fallback to single-choice session (legacy)
+                if (candidates.length === 0) {
+                    html += '<p style="color:#666;">No candidates for this session.</p>';
+                } else {
+                    candidates.forEach(cand => {
+                        html += `
+                            <label class="candidate-option" style="display:block; margin:8px 0;">
+                                <input type="radio" name="candidate_${sessionId}" value="${cand.id}" />
+                                <span class="candidate-name">${cand.name}</span>
+                                ${cand.bio ? `<div class="candidate-bio">${cand.bio}</div>` : ''}
+                            </label>
+                        `;
+                    });
+                }
             } else {
-                candidates.forEach(cand => {
-                    html += `
-                        <label class="candidate-option" style="display:block; margin:8px 0;">
-                            <input type="radio" name="candidate_${sessionId}" value="${cand.id}" />
-                            <span class="candidate-name">${cand.name}</span>
-                            ${cand.bio ? `<div class="candidate-bio">${cand.bio}</div>` : ''}
-                        </label>
-                    `;
+                // show one group per position (seat)
+                const positions = DB.getPositions().filter(p => posIds.includes(p.id));
+                positions.forEach(pos => {
+                    html += `<div style="border:1px solid #eee; padding:8px; margin-bottom:8px; border-radius:6px;"><strong>${pos.name}</strong>`;
+                    const posCandidates = candidates.filter(c => c.positionId === pos.id);
+                    if (posCandidates.length === 0) {
+                        html += '<div style="color:#666; margin-top:6px;">No candidates for this seat.</div>';
+                    } else {
+                        posCandidates.forEach(cand => {
+                            html += `
+                                <label style="display:block; margin:6px 0;">
+                                    <input type="radio" name="position_${pos.id}" value="${cand.id}" />
+                                    <span class="candidate-name">${cand.name}</span>
+                                    ${cand.bio ? `<div class="candidate-bio">${cand.bio}</div>` : ''}
+                                </label>
+                            `;
+                        });
+                    }
+                    html += '</div>';
                 });
-                html += `
-                    <div style="margin-top:12px;">
-                        <button class="btn-vote" onclick="submitSessionVote('${sessionId}')" style="width:100%;">Submit Vote</button>
-                        <button class="btn" onclick="toggleCastVote('${sessionId}')" style="width:100%; margin-top:6px;">Cancel</button>
-                    </div>
-                `;
             }
-            
+
+            html += `
+                <div style="margin-top:12px;">
+                    <button class="btn-vote" onclick="submitSessionVote('${sessionId}')" style="width:100%;">Submit Vote</button>
+                    <button class="btn" onclick="toggleCastVote('${sessionId}')" style="width:100%; margin-top:6px;">Cancel</button>
+                </div>
+            `;
+
             panel.innerHTML = html;
         }
 
-        // Submit vote for a session
+        // Submit vote for a session (supports multiple seats)
         function submitSessionVote(sessionId) {
-            const selected = document.querySelector(`input[name="candidate_${sessionId}"]:checked`);
-            if (!selected) {
-                return alert('Please select a candidate');
+            const session = DB.getSessions().find(s => s.id === sessionId);
+            if (!session) return alert('Session not found');
+
+            const posIds = session?.positions || [];
+            const candidates = DB.getCandidates().filter(c => c.sessionId === sessionId);
+
+            const votesToAdd = [];
+
+            if (posIds.length === 0) {
+                // legacy single-choice
+                const selected = document.querySelector(`input[name="candidate_${sessionId}"]:checked`);
+                if (!selected) return alert('Please select a candidate');
+                votesToAdd.push({ sessionId, positionId: null, candidateId: selected.value, voterEmail, timestamp: new Date().toISOString() });
+            } else {
+                // one vote per position if selected
+                const positions = DB.getPositions().filter(p => posIds.includes(p.id));
+                positions.forEach(pos => {
+                    const sel = document.querySelector(`input[name="position_${pos.id}"]:checked`);
+                    if (sel) {
+                        votesToAdd.push({ sessionId, positionId: pos.id, candidateId: sel.value, voterEmail, timestamp: new Date().toISOString() });
+                    }
+                });
+                if (votesToAdd.length === 0) return alert('Please select at least one candidate for the seats you want to vote in');
             }
 
-            const vote = {
-                sessionId: sessionId,
-                positionId: null,
-                candidateId: selected.value,
-                voterEmail: voterEmail,
-                timestamp: new Date().toISOString()
-            };
+            // Remove any existing votes by this voter for the same session and positions
+            const allVotes = DB.getVotes();
+            let remaining = allVotes.filter(v => !(v.voterEmail === voterEmail && v.sessionId === sessionId && votesToAdd.some(nv => nv.positionId === v.positionId)));
+            DB.saveVotes(remaining);
 
-            DB.addVote(vote);
-            alert('Your vote has been submitted successfully!');
-            
+            // Add new votes
+            votesToAdd.forEach(v => DB.addVote(v));
+
+            alert('Your vote(s) have been submitted successfully!');
             // Close the panel and reload
             document.getElementById(`votePanel_${sessionId}`).style.display = 'none';
             currentVotingSessionId = null;
