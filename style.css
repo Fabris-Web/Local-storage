@@ -3,3 +3,13 @@ body { font-family: Arial, sans-serif; background: #f1f1f1; margin: 0; padding: 
 .candidate-option .candidate-photo, .candidate-photo { vertical-align: middle; }
 .candidate-name { vertical-align: middle; margin-left:6px; }
 .candidate-bio { font-size:12px; color:#666; margin-left:56px; }
+.candidate-row { display:flex; align-items:center; }
+.candidate-details { display:flex; flex-direction:column; }
+.candidate-option input[type="radio"] { transform: scale(1.05); }
+.hidden-radio { position: absolute; left: -9999px; }
+.tick { display:inline-block; width:20px; height:20px; border-radius:6px; border:2px solid #c8c8c8; background:#fff; box-sizing:border-box; transition: all .15s ease; vertical-align:middle; }
+.tick::after { content: ''; position: absolute; left:6px; top:2px; width:6px; height:12px; border: solid transparent; border-width:0 2px 2px 0; transform: rotate(45deg); opacity:0; transition: all .12s ease; }
+.hidden-radio:focus + .tick { outline: 2px solid #bde8b4; }
+.hidden-radio:checked + .tick { background: #28a745; border-color: #28a745; box-shadow: 0 0 12px rgba(40,167,69,0.45); }
+.hidden-radio:checked + .tick::after { border-color: #fff; opacity:1; }
+.tick:hover { border-color: #8bc34a; }

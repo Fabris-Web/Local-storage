@@ -340,10 +340,17 @@
                         const img = cand.photo ? `<img src="${cand.photo}" class="candidate-photo" />` : '';
                         html += `
                             <label class="candidate-option" style="display:block; margin:8px 0;">
-                                <input type="radio" name="candidate_${sessionId}" value="${cand.id}" />
-                                ${img}
-                                <span class="candidate-name">${cand.name}</span>
-                                ${cand.bio ? `<div class="candidate-bio">${cand.bio}</div>` : ''}
+                                <div class="candidate-row" style="display:flex; align-items:center;">
+                                    <div style="margin-right:8px; position:relative;">
+                                        <input type="radio" name="candidate_${sessionId}" value="${cand.id}" id="radio_${sessionId}_${cand.id}" class="hidden-radio" />
+                                        <span class="tick" onclick="document.getElementById('radio_${sessionId}_${cand.id}').click()"></span>
+                                    </div>
+                                    ${img}
+                                    <div class="candidate-details" style="display:flex; flex-direction:column; text-align:left; margin-left:8px;">
+                                        <span class="candidate-name">${cand.name}</span>
+                                        ${cand.bio ? `<div class="candidate-bio">${cand.bio}</div>` : ''}
+                                    </div>
+                                </div>
                             </label>
                         `;
                     });
@@ -361,10 +368,17 @@
                             const img = cand.photo ? `<img src="${cand.photo}" class="candidate-photo" />` : '';
                             html += `
                                 <label style="display:block; margin:6px 0;">
-                                    <input type="radio" name="position_${pos.id}" value="${cand.id}" />
-                                    ${img}
-                                    <span class="candidate-name">${cand.name}</span>
-                                    ${cand.bio ? `<div class="candidate-bio">${cand.bio}</div>` : ''}
+                                    <div class="candidate-row" style="display:flex; align-items:center;">
+                                        <div style="margin-right:8px; position:relative;">
+                                            <input type="radio" name="position_${pos.id}" value="${cand.id}" id="radio_pos_${pos.id}_${cand.id}" class="hidden-radio" />
+                                            <span class="tick" onclick="document.getElementById('radio_pos_${pos.id}_${cand.id}').click()"></span>
+                                        </div>
+                                        ${img}
+                                        <div class="candidate-details" style="display:flex; flex-direction:column; text-align:left; margin-left:8px;">
+                                            <span class="candidate-name">${cand.name}</span>
+                                            ${cand.bio ? `<div class="candidate-bio">${cand.bio}</div>` : ''}
+                                        </div>
+                                    </div>
                                 </label>
                             `;
                         });
