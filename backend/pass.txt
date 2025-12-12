@@ -1,0 +1,5 @@
+PASS wQxqjBeNukFfw3EZ
+
+URL https://xcbunduikfaklrfsslgz.supabase.co
+
+ANON eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhjYnVuZHVpa2Zha2xyZnNzbGd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU1NTk2NzUsImV4cCI6MjA4MTEzNTY3NX0._CzrlZK1gozgX7rhVbtiVBmp4zwbxC6Xejn15NFkIYI
