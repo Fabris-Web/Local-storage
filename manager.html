@@ -701,6 +701,7 @@
             </div>
             <div class="header-actions">
                 <button class="btn" onclick="openProfileModal()">👤 Profile</button>
+                <button class="btn" onclick="openManagerChat()">💬 Chat</button>
                 <button class="btn" onclick="logout()">🚪 Logout</button>
             </div>
         </div>
@@ -901,6 +902,23 @@
             <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
                 <button class="btn" type="button" onclick="closeProfileModal()">Cancel</button>
                 <button class="btn" type="button" onclick="saveProfile()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manager <> Super Admin Chat Modal -->
+    <div id="managerChatModal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:1100;">
+        <div style="margin:auto; width:720px; max-width:95%; text-align:left; background:var(--bg-primary); padding:18px; border-radius:10px; box-shadow:var(--shadow-lg); border:1px solid var(--border-color); color:var(--text-primary);">
+            <h3>Manager — Admin Chat</h3>
+            <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
+                <label style="min-width:90px;">Session</label>
+                <select id="managerChatSessionSelect" style="flex:1; padding:8px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary);"></select>
+                <button class="btn" onclick="closeManagerChat()">Close</button>
+            </div>
+            <div id="managerChatMessages" style="max-height:360px; overflow:auto; padding:8px; border:1px solid var(--border-color); background:var(--bg-secondary); border-radius:8px;"></div>
+            <div style="display:flex; gap:8px; margin-top:10px;">
+                <input id="managerChatInput" placeholder="Write a public message for this session..." style="flex:1; padding:10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary);" />
+                <button class="btn" onclick="sendManagerMessage()">Send</button>
             </div>
         </div>
     </div>
@@ -1599,6 +1617,69 @@
             document.getElementById('statsPendingRequests').textContent = pendingRequests;
             document.getElementById('statsApprovedVoters').textContent = approvedRequests;
             document.getElementById('statsTotalVotes').textContent = votes;
+        }
+
+        // Manager <-> Super Admin chat utilities
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, function (s) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[s]; });
+        }
+        function openManagerChat() {
+            // populate sessions this manager manages
+            const sessions = DB.getSessions().filter(s => s.manager === managerEmail);
+            const sel = document.getElementById('managerChatSessionSelect');
+            sel.innerHTML = '';
+            sessions.forEach(s => { const o = document.createElement('option'); o.value = s.id; o.textContent = s.title; sel.appendChild(o); });
+            if (sessions.length === 0) { sel.innerHTML = '<option value="">(no sessions assigned)</option>'; }
+            document.getElementById('managerChatModal').style.display = 'flex';
+            if (sessions.length) { renderManagerChat(sessions[0].id); sel.value = sessions[0].id; }
+            sel.onchange = function(){ renderManagerChat(this.value); };
+        }
+
+        function closeManagerChat() { document.getElementById('managerChatModal').style.display = 'none'; }
+
+        function renderManagerChat(sessionId) {
+            const container = document.getElementById('managerChatMessages');
+            container.innerHTML = '';
+            if (!sessionId) return;
+            const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+            const myEmail = currentUser.email || '';
+            const chats = DB.getSessionChats().filter(c => c.sessionId === sessionId).sort((a,b)=>a.timestamp-b.timestamp);
+            chats.forEach(m => {
+                const isOwn = m.role === 'manager';
+                const div = document.createElement('div');
+                div.style.display = 'flex';
+                div.style.justifyContent = isOwn ? 'flex-end' : 'flex-start';
+                div.style.marginBottom = '12px';
+                div.style.paddingLeft = isOwn ? '40px' : '0';
+                div.style.paddingRight = isOwn ? '0' : '40px';
+                const bubble = document.createElement('div');
+                bubble.style.maxWidth = '60%';
+                bubble.style.padding = '12px 14px';
+                bubble.style.borderRadius = isOwn ? '16px 4px 16px 16px' : '4px 16px 16px 16px';
+                bubble.style.backgroundColor = isOwn ? 'var(--accent-primary)' : 'var(--bg-secondary)';
+                bubble.style.color = isOwn ? 'white' : 'var(--text-primary)';
+                bubble.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)';
+                bubble.innerHTML = `
+                    <div style="font-size:0.85rem;font-weight:600;margin-bottom:4px;opacity:0.9;">${m.from} <span style="font-weight:400;font-size:0.8rem;">(${m.role})</span></div>
+                    <div style="margin-bottom:4px;">${escapeHtml(m.text)}</div>
+                    <div style="font-size:0.75rem;opacity:0.7;text-align:right;">${new Date(m.timestamp).toLocaleTimeString()}</div>
+                `;
+                div.appendChild(bubble);
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendManagerMessage() {
+            const sel = document.getElementById('managerChatSessionSelect');
+            const sessionId = sel.value;
+            const input = document.getElementById('managerChatInput');
+            const text = (input.value||'').trim();
+            if (!sessionId) return alert('Select a session');
+            if (!text) return;
+            DB.addSessionChat({ sessionId, from: managerEmail || 'manager', role: 'manager', text, timestamp: Date.now() });
+            input.value = '';
+            renderManagerChat(sessionId);
         }
 
         // Initial load

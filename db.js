@@ -42,6 +42,10 @@ if (!localStorage.getItem("settings")) {
 	localStorage.setItem("settings", JSON.stringify(defaultSettings));
 }
 
+if (!localStorage.getItem("sessionChats")) {
+	localStorage.setItem("sessionChats", JSON.stringify([]));
+}
+
 const DB = {
 	// Users
 	getUsers: () => safeParse('users'),
@@ -218,6 +222,27 @@ const DB = {
 		Object.assign(s, patch);
 		DB.saveSettings(s);
 	}
+
+	, // <-- comma to separate object properties
+	// Session Chats (public per session)
+	getSessionChats: () => safeParse('sessionChats'),
+	saveSessionChats: (chats) => localStorage.setItem('sessionChats', JSON.stringify(chats)),
+	addSessionChat: (chat) => {
+		const chats = DB.getSessionChats();
+		chat.id = 'm_' + Date.now();
+		chat.timestamp = chat.timestamp || Date.now();
+		chats.push(chat);
+		DB.saveSessionChats(chats);
+		return chat;
+	},
+	clearSessionChatsForSession: (sessionId) => {
+		let chats = DB.getSessionChats();
+		chats = chats.filter(c => c.sessionId !== sessionId);
+		DB.saveSessionChats(chats);
+	}
+
 };
+
+// End DB
 
 // End DB

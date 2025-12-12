@@ -727,7 +727,8 @@
                 <h1>Super Admin Dashboard</h1>
                 <p style="color: #666; margin: 5px 0 0 0;">System Administrator</p>
             </div>
-            <div style="display:flex; gap:8px;">
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button class="btn" onclick="openAdminChatList()">Chats</button>
                 <button class="btn" onclick="openProfileModal()">Profile</button>
                 <button class="btn" onclick="logout()">Logout</button>
             </div>
@@ -908,6 +909,30 @@
             </div>
         </div>
     </div>
+    <!-- Admin view: Session Chat Modal -->
+    <div id="adminChatModal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:1100;">
+        <div style="margin:auto; width:720px; max-width:95%; background:var(--bg-primary); padding:18px; border-radius:10px; box-shadow:var(--shadow-lg); border:1px solid var(--border-color); color:var(--text-primary);">
+            <h3>Session Chat (Admin)</h3>
+            <div id="adminChatSessionTitle" style="font-weight:700; margin-bottom:8px;"></div>
+            <div id="adminChatMessages" style="max-height:400px; overflow:auto; padding:8px; border:1px solid var(--border-color); background:var(--bg-secondary); border-radius:8px;"></div>
+            <div style="display:flex; gap:8px; margin-top:10px;">
+                <input id="adminChatInput" placeholder="Reply publicly to this session..." style="flex:1; padding:10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary);" />
+                <button class="btn" onclick="sendAdminMessage()">Reply</button>
+                <button class="btn" onclick="closeAdminChat()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin view: Sessions List Modal (open chats per session) -->
+    <div id="adminChatListModal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:1100;">
+        <div style="margin:auto; width:720px; max-width:95%; background:var(--bg-primary); padding:18px; border-radius:10px; box-shadow:var(--shadow-lg); border:1px solid var(--border-color); color:var(--text-primary);">
+            <h3>Session Chats</h3>
+            <div id="adminChatList" style="max-height:400px; overflow:auto; padding:8px; border:1px solid var(--border-color); background:var(--bg-secondary); border-radius:8px;"></div>
+            <div style="display:flex; gap:8px; margin-top:10px; justify-content:flex-end;">
+                <button class="btn" onclick="closeAdminChatList()">Close</button>
+            </div>
+        </div>
+    </div>
 
     <script src="db.js"></script>
     <script src="logout.js"></script>
@@ -1081,11 +1106,12 @@
                       <div id="countdown_${s.id}" class="session-countdown" style="font-size:12px;color:#666; margin-top:6px;"></div>
                     </td>
                     <td>${managerLabel}</td>
-                    <td id="status_${s.id}">${activeLabel}</td>
-                    <td>
-                      <button class="btn" onclick="closeSession('${s.id}')">Close</button>
-                      <button class="btn" onclick="deleteSession('${s.id}')">Delete</button>
-                    </td>
+                                        <td id="status_${s.id}">${activeLabel}</td>
+                                        <td>
+                                            <button class="btn" onclick="closeSession('${s.id}')">Close</button>
+                                            <button class="btn" onclick="deleteSession('${s.id}')">Delete</button>
+                                            <button class="btn" onclick="openSuperAdminChat('${s.id}')">Chat</button>
+                                        </td>
                 `;
                 tbody.appendChild(row);
             });
@@ -1169,6 +1195,99 @@
             DB.updateSettings({ name: name || undefined, rules: rules || undefined });
             alert('Settings saved');
         });
+
+        // Admin chat functions
+        function openSuperAdminChat(sessionId) {
+            const session = DB.getSessions().find(s => s.id === sessionId);
+            if (!session) return alert('Session not found');
+            document.getElementById('adminChatSessionTitle').textContent = session.title;
+            document.getElementById('adminChatModal').style.display = 'flex';
+            renderAdminChat(sessionId);
+            document.getElementById('adminChatModal').dataset.sessionId = sessionId;
+        }
+
+        function closeAdminChat() { document.getElementById('adminChatModal').style.display = 'none'; }
+
+        function renderAdminChat(sessionId) {
+            const container = document.getElementById('adminChatMessages');
+            container.innerHTML = '';
+            const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+            const myEmail = currentUser.email || '';
+            const chats = DB.getSessionChats().filter(c => c.sessionId === sessionId).sort((a,b)=>a.timestamp-b.timestamp);
+            chats.forEach(m => {
+                const isOwn = m.role === 'super_admin';
+                const div = document.createElement('div');
+                div.style.display = 'flex';
+                div.style.justifyContent = isOwn ? 'flex-end' : 'flex-start';
+                div.style.marginBottom = '12px';
+                div.style.paddingLeft = isOwn ? '40px' : '0';
+                div.style.paddingRight = isOwn ? '0' : '40px';
+                const bubble = document.createElement('div');
+                bubble.style.maxWidth = '60%';
+                bubble.style.padding = '12px 14px';
+                bubble.style.borderRadius = isOwn ? '16px 4px 16px 16px' : '4px 16px 16px 16px';
+                bubble.style.backgroundColor = isOwn ? 'var(--accent-primary)' : 'var(--bg-secondary)';
+                bubble.style.color = isOwn ? 'white' : 'var(--text-primary)';
+                bubble.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)';
+                bubble.innerHTML = `
+                    <div style="font-size:0.85rem;font-weight:600;margin-bottom:4px;opacity:0.9;">${m.from} <span style="font-weight:400;font-size:0.8rem;">(${m.role})</span></div>
+                    <div style="margin-bottom:4px;">${escapeHtml(m.text)}</div>
+                    <div style="font-size:0.75rem;opacity:0.7;text-align:right;">${new Date(m.timestamp).toLocaleTimeString()}</div>
+                `;
+                div.appendChild(bubble);
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendAdminMessage() {
+            const modal = document.getElementById('adminChatModal');
+            const sessionId = modal.dataset.sessionId;
+            const input = document.getElementById('adminChatInput');
+            const text = (input.value||'').trim();
+            if (!sessionId) return alert('No session selected');
+            if (!text) return;
+            DB.addSessionChat({ sessionId, from: 'super_admin', role: 'super_admin', text, timestamp: Date.now() });
+            input.value = '';
+            renderAdminChat(sessionId);
+        }
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, function (s) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[s]; });
+        }
+
+        // Admin chat list (header) helpers
+        function openAdminChatList() {
+            renderAdminChatList();
+            document.getElementById('adminChatListModal').style.display = 'flex';
+        }
+        function closeAdminChatList() { document.getElementById('adminChatListModal').style.display = 'none'; }
+
+        function renderAdminChatList() {
+            const container = document.getElementById('adminChatList');
+            container.innerHTML = '';
+            const sessions = DB.getSessions();
+            if (!sessions || sessions.length === 0) {
+                container.innerHTML = '<div style="padding:12px;color:var(--text-tertiary);">No sessions available.</div>';
+                return;
+            }
+            sessions.forEach(s => {
+                const el = document.createElement('div');
+                el.style.padding = '10px';
+                el.style.borderBottom = '1px solid var(--border-color)';
+                el.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                        <div>
+                            <div style="font-weight:700;color:var(--text-primary);">${escapeHtml(s.title || s.id)}</div>
+                            <div style="font-size:0.9rem;color:var(--text-tertiary);">${s.manager? 'Manager: ' + escapeHtml(s.manager) : 'No manager assigned'}</div>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="btn" onclick="openSuperAdminChat('${s.id}'); closeAdminChatList();">Open Chat</button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
 
         // Initial load
         loadUsers();
