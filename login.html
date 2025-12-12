@@ -2,50 +2,425 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<title>Login</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>FABRIS Safe Voting - Sign In</title>
 	<link rel="stylesheet" href="style.css">
 	<style>
-		body { display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background: linear-gradient(135deg,#eef2ff,#f0fff4); }
-		.login-card { width:380px; background:white; padding:28px; border-radius:12px; box-shadow:0 14px 30px rgba(20,40,80,0.08); text-align:left; }
-		.brand { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
-		.brand-logo { width:48px; height:48px; border-radius:10px; background:linear-gradient(135deg,#28a745,#66cc88); color:white; display:flex; align-items:center; justify-content:center; font-size:22px; }
-		h2 { margin:0 0 8px 0; color:#123; }
-		.subtitle { color:#556; font-size:13px; margin-bottom:14px; }
-		input[type=email], input[type=password] { width:100%; padding:12px; margin:8px 0; border:1px solid #e2e8f0; border-radius:8px; box-sizing:border-box; }
-		.btn { width:100%; padding:12px; background:linear-gradient(90deg,#28a745,#20b36b); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; }
-		.btn:hover { filter:brightness(0.95); }
-		.note { color:#666; font-size:13px; margin-top:12px; }
-		.help-row { display:flex; justify-content:space-between; align-items:center; margin-top:10px; }
-		.link { color:#0b6; font-size:13px; text-decoration:none; }
-		.login-footer { margin-top:14px; font-size:12px; color:#889; }
+		:root {
+			--bg-primary: #ffffff;
+			--bg-secondary: #f8fbff;
+			--text-primary: #123;
+			--text-secondary: #234;
+			--text-tertiary: #556;
+			--border-color: #e0e0e0;
+			--shadow-md: 0 4px 15px rgba(0, 0, 0, 0.1);
+			--accent-primary: #28a745;
+			--accent-light: #66cc88;
+		}
+
+		html[data-theme="dark"] {
+			--bg-primary: #0a0a12;
+			--bg-secondary: #121220;
+			--text-primary: #f0f0f0;
+			--text-secondary: #e0e0e0;
+			--text-tertiary: #b0b0b0;
+			--border-color: #1f2a3f;
+			--shadow-md: 0 4px 15px rgba(0, 0, 0, 0.7);
+			--accent-primary: #28a745;
+			--accent-light: #66cc88;
+		}
+
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+			min-height: 100vh;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 20px;
+			position: relative;
+			overflow-x: hidden;
+		}
+
+		/* Animated Background Shapes */
+		body::before {
+			content: '';
+			position: fixed;
+			top: -50%;
+			right: -10%;
+			width: 500px;
+			height: 500px;
+			background: radial-gradient(circle, rgba(40, 167, 69, 0.1) 0%, transparent 70%);
+			border-radius: 50%;
+			z-index: 0;
+			animation: float 6s ease-in-out infinite;
+		}
+
+		body::after {
+			content: '';
+			position: fixed;
+			bottom: -20%;
+			left: -10%;
+			width: 400px;
+			height: 400px;
+			background: radial-gradient(circle, rgba(102, 204, 136, 0.08) 0%, transparent 70%);
+			border-radius: 50%;
+			z-index: 0;
+			animation: float 8s ease-in-out infinite reverse;
+		}
+
+		@keyframes float {
+			0%, 100% { transform: translateY(0px); }
+			50% { transform: translateY(20px); }
+		}
+
+		.login-wrapper {
+			width: 100%;
+			max-width: 420px;
+			position: relative;
+			z-index: 1;
+			animation: slideUp 0.7s ease-out;
+		}
+
+		@keyframes slideUp {
+			from {
+				opacity: 0;
+				transform: translateY(30px);
+			}
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+
+		.login-card {
+			background: white;
+			padding: clamp(28px, 6vw, 40px);
+			border-radius: 16px;
+			box-shadow: 0 20px 60px rgba(18, 52, 86, 0.15);
+			text-align: left;
+			transition: transform 0.3s ease, box-shadow 0.3s ease;
+		}
+
+		.login-card:hover {
+			transform: translateY(-5px);
+			box-shadow: 0 25px 70px rgba(18, 52, 86, 0.2);
+		}
+
+		/* Brand Section */
+		.brand {
+			display: flex;
+			align-items: center;
+			gap: 16px;
+			margin-bottom: 24px;
+			padding-bottom: 20px;
+			border-bottom: 2px solid #f0f4f8;
+		}
+
+		.brand-logo {
+			width: 56px;
+			height: 56px;
+			min-width: 56px;
+			border-radius: 12px;
+			background: linear-gradient(135deg, #28a745, #66cc88);
+			color: white;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 28px;
+			font-weight: bold;
+			box-shadow: 0 8px 24px rgba(40, 167, 69, 0.25);
+			transition: transform 0.3s ease;
+		}
+
+		.brand-logo:hover {
+			transform: scale(1.1);
+		}
+
+		.brand-text h2 {
+			margin: 0 0 4px 0;
+			color: #123;
+			font-size: clamp(1.5rem, 3vw, 1.8rem);
+			font-weight: 700;
+			letter-spacing: -0.5px;
+		}
+
+		.subtitle {
+			color: #556;
+			font-size: 0.95rem;
+			margin: 0;
+			font-weight: 500;
+		}
+
+		/* Form Section */
+		#loginForm {
+			margin: 28px 0;
+		}
+
+		.form-group {
+			margin-bottom: 18px;
+			position: relative;
+		}
+
+		.form-group label {
+			display: block;
+			margin-bottom: 8px;
+			color: #234;
+			font-weight: 600;
+			font-size: 0.9rem;
+			letter-spacing: 0.3px;
+		}
+
+		.form-input-wrapper {
+			position: relative;
+			display: flex;
+			align-items: center;
+		}
+
+		.form-input-wrapper::before {
+			position: absolute;
+			left: 14px;
+			font-size: 18px;
+			color: #28a745;
+			z-index: 2;
+		}
+
+		.form-group:nth-child(1) .form-input-wrapper::before {
+			content: '✉️';
+		}
+
+		.form-group:nth-child(2) .form-input-wrapper::before {
+			content: '🔐';
+		}
+
+		input[type=email],
+		input[type=password] {
+			width: 100%;
+			padding: 12px 14px 12px 44px;
+			border: 2px solid #e2e8f0;
+			border-radius: 10px;
+			font-size: 1rem;
+			transition: all 0.3s ease;
+			font-family: inherit;
+			background: #f8fafb;
+		}
+
+		input[type=email]:focus,
+		input[type=password]:focus {
+			outline: none;
+			border-color: #28a745;
+			background: white;
+			box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+		}
+
+		input[type=email]::placeholder,
+		input[type=password]::placeholder {
+			color: #a8b5c0;
+		}
+
+		/* Login Button */
+		.btn {
+			width: 100%;
+			padding: 14px 18px;
+			background: linear-gradient(135deg, #28a745, #20b36b);
+			color: white;
+			border: none;
+			border-radius: 10px;
+			font-weight: 700;
+			font-size: 1.05rem;
+			cursor: pointer;
+			transition: all 0.3s ease;
+			margin-top: 8px;
+			box-shadow: 0 10px 28px rgba(40, 167, 69, 0.2);
+			letter-spacing: 0.5px;
+		}
+
+		.btn:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 15px 35px rgba(40, 167, 69, 0.3);
+			background: linear-gradient(135deg, #228836, #1a9555);
+		}
+
+		.btn:active {
+			transform: translateY(0px);
+		}
+
+		/* Help Section */
+		.help-row {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-top: 18px;
+			padding-top: 18px;
+			border-top: 1px solid #f0f4f8;
+			flex-wrap: wrap;
+			gap: 12px;
+		}
+
+		.link {
+			color: #28a745;
+			font-size: 0.9rem;
+			text-decoration: none;
+			font-weight: 600;
+			transition: all 0.3s ease;
+			position: relative;
+		}
+
+		.link::after {
+			content: '';
+			position: absolute;
+			bottom: -2px;
+			left: 0;
+			width: 0;
+			height: 2px;
+			background: #28a745;
+			transition: width 0.3s ease;
+		}
+
+		.link:hover {
+			color: #20b36b;
+		}
+
+		.link:hover::after {
+			width: 100%;
+		}
+
+		/* Info Section */
+		.info-section {
+			background: linear-gradient(135deg, #f0fff4 0%, #f8fafb 100%);
+			border: 1px solid #d4e8df;
+			border-left: 4px solid #28a745;
+			padding: 16px;
+			border-radius: 10px;
+			margin-top: 24px;
+		}
+
+		.info-section .note {
+			color: #2d5a3d;
+			font-size: 0.9rem;
+			line-height: 1.6;
+			margin: 0 0 12px 0;
+			font-weight: 500;
+		}
+
+		.info-section .note strong {
+			color: #1a3a2a;
+			font-weight: 700;
+		}
+
+		.login-footer {
+			margin-top: 12px;
+			font-size: 0.85rem;
+			color: #778;
+			line-height: 1.5;
+		}
+
+		.login-footer::before {
+			content: '💡 ';
+		}
+
+		/* Responsive Design */
+		@media (max-width: 480px) {
+			.login-wrapper {
+				max-width: 100%;
+			}
+
+			.login-card {
+				padding: 24px 20px;
+			}
+
+			.brand {
+				gap: 12px;
+				margin-bottom: 20px;
+				padding-bottom: 16px;
+			}
+
+			.brand-logo {
+				width: 48px;
+				height: 48px;
+				font-size: 24px;
+			}
+
+			.brand-text h2 {
+				font-size: 1.4rem;
+			}
+
+			.subtitle {
+				font-size: 0.9rem;
+			}
+
+			.help-row {
+				flex-direction: column;
+				align-items: stretch;
+				gap: 8px;
+			}
+
+			.link {
+				text-align: center;
+				display: block;
+			}
+
+			input[type=email],
+			input[type=password] {
+				padding: 12px 14px 12px 40px;
+			}
+
+			.btn {
+				padding: 12px 16px;
+				font-size: 1rem;
+			}
+		}
 	</style>
 </head>
 <body>
-	<div class="login-card card">
-		<div class="brand">
-			<div class="brand-logo">✓</div>
-			<div>
-				<h2>Sign In</h2>
-				<div class="subtitle">Access your voting dashboard</div>
+	<div class="login-wrapper">
+		<div class="login-card">
+			<div class="brand">
+				<div class="brand-logo">✓</div>
+				<div class="brand-text">
+					<h2>Welcome Back</h2>
+					<div class="subtitle">Sign in to your account</div>
+				</div>
+			</div>
+
+			<form id="loginForm">
+				<div class="form-group">
+					<label for="email">Email Address</label>
+					<div class="form-input-wrapper">
+						<input type="email" id="email" placeholder="you@example.com" required>
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label for="password">Password</label>
+					<div class="form-input-wrapper">
+						<input type="password" id="password" placeholder="Enter your password" required>
+					</div>
+				</div>
+
+				<button type="submit" class="btn">Sign In</button>
+			</form>
+
+			<div class="help-row">
+				<a href="index.html" class="link">← Back to Home</a>
+				<a href="#" onclick="alert('Contact the administrator to reset your password.'); return false;" class="link">Need help?</a>
+			</div>
+
+			<div class="info-section">
+				<p class="note"><strong>New here?</strong> Only invited users can sign in. If you've been invited, check your email for your temporary password from the organizer.</p>
+				<div class="login-footer">This demo stores data locally in your browser. For production, deploy on a secure server.</div>
 			</div>
 		</div>
-
-		<form id="loginForm">
-			<input type="email" id="email" placeholder="Email" required>
-			<input type="password" id="password" placeholder="Password" required>
-			<button class="btn">Login</button>
-		</form>
-
-		<div class="help-row">
-			<a href="index.html" class="link">Back to Welcome</a>
-			<a href="#" onclick="alert('If you forgot your password, ask the administrator.'); return false;" class="link">Forgot password?</a>
-		</div>
-
-		<p class="note">Only invited users can login. New invited voters may use the default temporary password provided by the organizer.</p>
-		<div class="login-footer">Tip: This demo stores data locally in your browser. For production, run on a secure server.</div>
 	</div>
 
 	<script src="db.js"></script>
 	<script src="auth.js"></script>
+	<script src="dark-mode.js"></script>
 </body>
 </html>

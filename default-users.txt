@@ -1,0 +1,3 @@
+super@system.com password: "1234", role: "super_admin",
+manager@system.com password: "1234", role: "manager",
+voter@system.com password: "1234", role: "voter",
