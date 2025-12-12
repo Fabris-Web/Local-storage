@@ -1,245 +1,485 @@
-# FABRIS Safe Voting System - Database Integration
+# FABRIS Safe Voting System - MongoDB Database Integration
 
 ## Architecture Overview
 
-This is a **browser-based, role-based voting system** with three user roles: `super_admin`, `manager`, and `voter`. The application uses **localStorage as the persistent database** with no backend server.
+**Current State**: Browser-based system using localStorage  
+**Target State**: Full-stack application with Node.js/Express backend and MongoDB
 
-### Core Data Layer
-- **`db.js`**: Central localStorage abstraction providing a complete CRUD API
-- **Entity Types**: Users, Sessions, Positions, Candidates, Votes, Voter Invites, Session Chats
-- **ID Generation**: Timestamp-based with role prefixes (e.g., `s_` for sessions, `c_` for candidates)
+The FABRIS voting system will migrate from localStorage to MongoDB for scalable, persistent data storage with multi-user support, audit trails, and real-time synchronization.
 
-### Key Components
-- **`db.js`**: LocalStorage database abstraction (all data operations)
-- **`auth.js`**: Login form handler with email/password validation
-- **`redirect.js`**: Post-login routing based on user role
-- **`logout.js`**: Session cleanup (clears `currentUser`)
-- **`dark-mode.js`**: Dark/light theme toggle with localStorage persistence
-- **Dashboards**: `super_admin.html`, `manager.html`, `voter.html` (role-specific UI)
-- **Style**: `style.css` (responsive, theme-aware with CSS variables)
+### Technology Stack
+- **Backend**: Node.js + Express.js
+- **Database**: MongoDB 6.0+
+- **ODM**: Mongoose (schema validation, relationships)
+- **Authentication**: JWT (JSON Web Tokens)
+- **Frontend**: Existing Vue/vanilla JS (minimal changes via `api.js` wrapper)
 
-## Data Model
+### Architecture Flow
+```
+Browser (Frontend) 
+    ↓
+auth.js (login form) → api.js (HTTP requests)
+    ↓
+Express API Server (Node.js)
+    ↓
+Mongoose Models → MongoDB Collections
+```
 
-### Users
-```js
-{
-  email: "user@example.com",
-  password: "1234",
-  role: "super_admin|manager|voter",
-  name: "Display Name",
-  active: true
-}
+## MongoDB Collections & Schemas
+
+### Users Collection
+```javascript
+db.createCollection("users", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["email", "password", "role", "createdAt"],
+      properties: {
+        _id: { bsonType: "objectId" },
+        email: { bsonType: "string", pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$" },
+        password: { bsonType: "string" },  // bcrypt hashed
+        role: { enum: ["super_admin", "manager", "voter"] },
+        name: { bsonType: "string" },
+        active: { bsonType: "bool", default: true },
+        createdAt: { bsonType: "date" },
+        updatedAt: { bsonType: "date" }
+      }
+    }
+  }
+});
+
+// Indexes
+db.users.createIndex({ email: 1 }, { unique: true });
+db.users.createIndex({ role: 1 });
+db.users.createIndex({ createdAt: -1 });
+```
+
+**Mongoose Schema** (`backend/models/User.js`):
+```javascript
+const userSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  password: { type: String, required: true },  // bcrypt hashed
+  role: { type: String, enum: ['super_admin', 'manager', 'voter'], required: true },
+  name: { type: String },
+  active: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+}, { timestamps: true });
+```
+
+### Sessions Collection
+```javascript
+db.createCollection("sessions", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["title", "startDate", "endDate", "seats"],
+      properties: {
+        _id: { bsonType: "objectId" },
+        title: { bsonType: "string" },
+        description: { bsonType: "string" },
+        startDate: { bsonType: "date" },
+        endDate: { bsonType: "date" },
+        manager: { bsonType: ["string", "null"] },  // email of assigned manager
+        seats: { bsonType: "int", minimum: 1 },
+        positions: { bsonType: "array", items: { bsonType: "objectId" } },  // refs to positions
+        closed: { bsonType: "bool", default: false },
+        createdAt: { bsonType: "date" },
+        updatedAt: { bsonType: "date" }
+      }
+    }
+  }
+});
+
+// Indexes for fast queries
+db.sessions.createIndex({ manager: 1 });
+db.sessions.createIndex({ startDate: 1, endDate: 1 });
+db.sessions.createIndex({ closed: 1 });
+db.sessions.createIndex({ createdAt: -1 });
+```
+
+**Mongoose Schema** (`backend/models/Session.js`):
+```javascript
+const sessionSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String },
+  startDate: { type: Date, required: true },
+  endDate: { type: Date, required: true },
+  manager: { type: String, ref: 'User', default: null },  // manager email
+  seats: { type: Number, required: true, min: 1 },
+  positions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Position' }],
+  closed: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+}, { timestamps: true });
+```
+
+### Positions Collection (Seats)
+```javascript
+db.positions.createIndex({ sessionId: 1 });
+```
+
+**Mongoose Schema** (`backend/models/Position.js`):
+```javascript
+const positionSchema = new mongoose.Schema({
+  sessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Session', required: true },
+  name: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+}, { timestamps: true });
+```
+
+### Candidates Collection
+```javascript
+db.candidates.createIndex({ sessionId: 1 });
+db.candidates.createIndex({ positionId: 1 });
+db.candidates.createIndex({ voterEmail: 1 });
+```
+
+**Mongoose Schema** (`backend/models/Candidate.js`):
+```javascript
+const candidateSchema = new mongoose.Schema({
+  sessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Session', required: true },
+  positionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Position', default: null },
+  name: { type: String, required: true },
+  bio: { type: String },
+  voterEmail: { type: String },  // nominee's email
+  photo: { type: String },  // URL or base64
+  createdAt: { type: Date, default: Date.now }
+}, { timestamps: true });
+```
+
+### Votes Collection
+```javascript
+db.votes.createIndex({ sessionId: 1 });
+db.votes.createIndex({ voterEmail: 1, sessionId: 1 }, { unique: true });  // one vote per voter per session (legacy)
+db.votes.createIndex({ candidateId: 1 });
+db.votes.createIndex({ timestamp: -1 });
+```
+
+**Mongoose Schema** (`backend/models/Vote.js`):
+```javascript
+const voteSchema = new mongoose.Schema({
+  sessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Session', required: true },
+  positionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Position', default: null },
+  candidateId: { type: mongoose.Schema.Types.ObjectId, ref: 'Candidate', required: true },
+  voterEmail: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now }
+}, { timestamps: true });
+
+// Compound index for analytics
+voteSchema.index({ sessionId: 1, positionId: 1, candidateId: 1 });
+```
+
+### Voter Invites Collection
+```javascript
+db.voterInvites.createIndex({ sessionId: 1 });
+db.voterInvites.createIndex({ voterEmail: 1 });
+```
+
+**Mongoose Schema** (`backend/models/VoterInvite.js`):
+```javascript
+const voterInviteSchema = new mongoose.Schema({
+  sessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Session', required: true },
+  voterEmail: { type: String, required: true, lowercase: true },
+  status: { type: String, enum: ['pending', 'accepted'], default: 'pending' },
+  invitedAt: { type: Date, default: Date.now },
+  acceptedAt: { type: Date }
+}, { timestamps: true });
+
+voterInviteSchema.index({ sessionId: 1, voterEmail: 1 }, { unique: true });
+```
+
+### Session Chats Collection
+```javascript
+db.sessionChats.createIndex({ sessionId: 1 });
+db.sessionChats.createIndex({ timestamp: -1 });
+db.sessionChats.createIndex({ role: 1 });
+```
+
+**Mongoose Schema** (`backend/models/SessionChat.js`):
+```javascript
+const sessionChatSchema = new mongoose.Schema({
+  sessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Session', required: true },
+  from: { type: String, required: true },  // email
+  role: { type: String, enum: ['manager', 'voter', 'super_admin'], required: true },
+  text: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now }
+}, { timestamps: true });
+```
+
+## API Endpoints (Express Routes)
+
+### Authentication
+```
+POST   /api/auth/login          → { email, password } → { token, user }
+POST   /api/auth/register       → { email, password, role } → { token, user }
+POST   /api/auth/logout         → {} → { success: true }
+GET    /api/auth/me             → {} → { user } (JWT protected)
+```
+
+### Users (Super Admin)
+```
+GET    /api/users               → [] (all users)
+POST   /api/users               → { email, role } → { user }
+PUT    /api/users/:id           → { name, active } → { user }
+DELETE /api/users/:id           → {} → { success: true }
 ```
 
 ### Sessions
-```js
-{
-  id: "s_" + timestamp,
-  title: "Session Title",
-  description: "Details",
-  startDate: ISO8601,
-  endDate: ISO8601,
-  manager: "manager@example.com",
-  seats: 2,
-  positions: ["p_123", "p_456"],
-  closed: false
-}
+```
+GET    /api/sessions            → [] (all sessions, filtered by manager if not super_admin)
+POST   /api/sessions            → { title, seats, startDate, endDate, manager } → { session }
+PUT    /api/sessions/:id        → { title, closed, ... } → { session }
+DELETE /api/sessions/:id        → {} → { success: true }
+GET    /api/sessions/:id/stats  → {} → { voters: [], candidates: [], votes: 0 }
 ```
 
-### Positions (Seats)
-```js
-{
-  id: "p_" + timestamp,
-  sessionId: "s_123",
-  name: "President"
-}
+### Positions
+```
+GET    /api/sessions/:id/positions        → [] (positions for session)
+POST   /api/sessions/:id/positions        → { name } → { position }
+DELETE /api/sessions/:id/positions/:posId → {} → { success: true }
 ```
 
 ### Candidates
-```js
-{
-  id: "c_" + timestamp,
-  sessionId: "s_123",
-  positionId: "p_123",
-  name: "John Doe",
-  bio: "Short bio",
-  voterEmail: "voter@example.com",
-  photo: "url or base64"
-}
+```
+GET    /api/sessions/:id/candidates       → [] (candidates for session)
+POST   /api/sessions/:id/candidates       → { name, bio, positionId, voterEmail } → { candidate }
+DELETE /api/candidates/:id                 → {} → { success: true }
 ```
 
 ### Votes
-```js
-{
-  id: "v_" + timestamp,
-  sessionId: "s_123",
-  positionId: "p_123",
-  candidateId: "c_123",
-  voterEmail: "voter@example.com",
-  timestamp: ISO8601
-}
+```
+GET    /api/sessions/:id/votes            → [] (all votes for session)
+POST   /api/sessions/:id/votes            → { positionId, candidateId } → { vote }
+GET    /api/sessions/:id/results          → {} → { resultsByPosition: {...} }
 ```
 
 ### Voter Invites
-```js
-{
-  "s_123": ["voter1@example.com", "voter2@example.com"],
-  "s_456": ["voter3@example.com"]
-}
+```
+GET    /api/sessions/:id/invites          → [] (invited voters for session)
+POST   /api/sessions/:id/invites          → { voterEmail } → { invite }
+DELETE /api/invites/:id                   → {} → { success: true }
 ```
 
 ### Session Chats
-```js
-{
-  id: "m_" + timestamp,
-  sessionId: "s_123",
-  from: "manager@example.com",
-  role: "manager|voter|super_admin",
-  text: "Message content",
-  timestamp: timestamp
-}
+```
+GET    /api/sessions/:id/chats            → [] (all chats for session)
+POST   /api/sessions/:id/chats            → { text } → { chat }
 ```
 
-## Critical Patterns
+## Frontend Integration (api.js)
 
-### Authentication & Authorization
-- **Session Storage**: User object stored in `localStorage.currentUser` (JSON string)
-- **Login Flow**: Email validation + password check → user object → redirect
-- **Authorization**: `redirect.js` enforces role-based routing; missing `currentUser` redirects to login
-- **Default Users** (initialized once on first app load):
-  - `super@system.com` / `1234` → super_admin
-  - `manager@system.com` / `1234` → manager
-  - `voter@system.com` / `1234` → voter
+Replace `db.js` calls with HTTP requests. Example wrapper:
 
-### Database Operations
-All data access via `DB` object in `db.js`. Example patterns:
-```js
-DB.getUsers()                           // array of all users
-DB.addUser(email, role)                // new user with default pw "1234"
-DB.findUser(email, password)           // login validation
-DB.getSessions()                       // all sessions
-DB.addSession({...})                   // create session
-DB.getSessionChats()                   // public per-session chats
-DB.addSessionChat({sessionId, from, role, text, timestamp})
-DB.getCandidates()                     // all candidates
-DB.getVotes()                          // all votes
+```javascript
+// api.js - HTTP abstraction layer
+const API_URL = 'http://localhost:5000/api';
+
+const api = {
+  // Auth
+  login: async (email, password) => {
+    const res = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    return res.json();
+  },
+
+  // Users
+  getUsers: async () => {
+    const res = await fetch(`${API_URL}/users`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    return res.json();
+  },
+
+  // Sessions
+  getSessions: async () => {
+    const res = await fetch(`${API_URL}/sessions`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    return res.json();
+  },
+
+  addSession: async (session) => {
+    const res = await fetch(`${API_URL}/sessions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(session)
+    });
+    return res.json();
+  }
+  
+  // ... other methods
+};
 ```
 
-**Important**: Default password hardcoded as `"1234"` in `addUser()`. No password reset mechanism.
+## Incremental Migration Strategy
 
-### Role-Based Dashboards
+### Phase 1: Backend Setup (Week 1)
+- [ ] Initialize Node.js project with Express
+- [ ] Install MongoDB driver + Mongoose
+- [ ] Create basic API scaffold with JWT auth
+- [ ] Keep frontend using localStorage as fallback
+- [ ] Goal: User login works via API OR localStorage
 
-#### Super Admin (`super_admin.html`)
-- User Management: add/remove/toggle users
-- Session Management: create, close, delete sessions
-- Voter Invites: invite voters to sessions
-- Session Statistics: voters, candidates, votes
-- Analytics: participation overview
-- Per-Session Chat: public reply channel via chat modal
-- Header Chat Button: quick access to all session chats
+### Phase 2: Migrate User Management (Week 2)
+- [ ] Implement `/api/auth/login`, `/api/auth/register`
+- [ ] Update `auth.js` to call API first, fallback to localStorage
+- [ ] Create MongoDB users collection
+- [ ] Test login with real MongoDB user
+- [ ] Goal: All new users stored in MongoDB
 
-#### Manager (`manager.html`)
-- Assigned Sessions: manage only sessions assigned by super admin
-- Voters: invite voters to assigned sessions
-- Candidates: manage candidates (voter-nominated or manager-added)
-- Session Reports:
-  - **Download Voters List**: all invited voters with system + session name in title
-  - **Download Candidates List**: all candidates with seats (if multi-seat)
-- Session Statistics: display voters, candidates, votes per session
-- Session Chat: manager-side reply channel for public session chat
-- Responsive session cards with inline voting panel for candidates
+### Phase 3: Migrate Session Data (Week 3)
+- [ ] Implement session CRUD API endpoints
+- [ ] Update manager/super_admin dashboards to fetch from API
+- [ ] Implement caching in localStorage for offline functionality
+- [ ] Add WebSocket for real-time updates (optional at this stage)
+- [ ] Goal: Sessions fully managed by MongoDB
 
-#### Voter (`voter.html`)
-- Session Browse: invited sessions (active, pending, closed)
-- Cast Vote: inline voting panel (supports multi-seat sessions)
-- Session Chat: public message board per session
-- Results: closed session voting tallies
-- Statistics: invited/voted sessions, active sessions
+### Phase 4: Migrate Voting & Reporting (Week 4)
+- [ ] Implement votes, candidates, positions API
+- [ ] Update voter dashboard to use API
+- [ ] Migrate CSV report generation to server-side
+- [ ] Test voting workflows
+- [ ] Goal: Complete voting flow uses MongoDB
 
-### Theme System
-- **CSS Variables**: All colors defined via `--bg-primary`, `--text-primary`, `--accent-primary`, etc.
-- **Dark Mode Toggle**: `dark-mode.js` creates toggle button, persists preference to `localStorage.darkModeEnabled`
-- **Attribute-Based**: `html[data-theme="dark"]` selector for dark-specific overrides
-- **Per-Page Customization**: Each dashboard has theme variable overrides in `<style>` block
+### Phase 5: Chats & Analytics (Week 5)
+- [ ] Implement session chats API
+- [ ] Add audit logging for admin actions
+- [ ] Implement real-time chat via WebSocket
+- [ ] Add analytics queries (vote counts, participation, etc.)
+- [ ] Goal: Full real-time collaboration features
 
-### Chat UI
-- **Professional Bubbles**: Sent messages (right, accent color), received messages (left, secondary background)
-- **Styling**: Rounded corners, timestamps, sender info
-- **Persistence**: All chats in localStorage under `sessionChats`
-- **Access**: Super admin (header "Chats" button + per-session modal), manager (header "Chat" button), voters (embedded in session card)
+### Phase 6: Cleanup & Optimization (Week 6)
+- [ ] Remove localStorage fallbacks
+- [ ] Add database indexes and performance tuning
+- [ ] Implement connection pooling
+- [ ] Add data validation on server side
+- [ ] Test with 1000+ records
+- [ ] Goal: Production-ready application
 
-## Common Workflows
+## Indexing Strategy
 
-### Creating a New Session
-1. Super admin navigates to "Voting Sessions" section
-2. Fills form: title, seats, start/end dates, description, optional manager
-3. System generates `id: "s_" + Date.now()`
-4. DB stores in `sessions` array via `DB.addSession(...)`
+```javascript
+// Users
+db.users.createIndex({ email: 1 }, { unique: true });
+db.users.createIndex({ role: 1 });
 
-### Inviting Voters to Session
-1. Manager selects session, enters voter email
-2. Email added to `voterInvites[sessionId]` array in localStorage
-3. Voter receives no email; must be notified out-of-band
-4. On first login, voter auto-enrolls if email in `voterInvites`
+// Sessions
+db.sessions.createIndex({ manager: 1 });
+db.sessions.createIndex({ startDate: 1, endDate: 1 });
+db.sessions.createIndex({ closed: 1 });
 
-### Voting Flow
-1. Voter logs in → sees invited sessions
-2. Session is active (time-based check via `DB.isSessionActive()`)
-3. Voter opens voting panel → selects candidates per seat
-4. Submit → votes recorded with voter email, timestamp, position/candidate IDs
-5. Closed sessions show results (tally by position)
+// Votes
+db.votes.createIndex({ sessionId: 1, voterEmail: 1 }, { unique: false });
+db.votes.createIndex({ candidateId: 1 });
 
-### Reporting
-- Managers can download CSV:
-  - **Voters List**: all invited voters (system + session name in header)
-  - **Candidates List**: all candidates with seats
-  - **Votes Summary**: candidate vote counts per position
+// Chats
+db.sessionChats.createIndex({ sessionId: 1, timestamp: -1 });
 
-### Session Lifecycle
-- **Pending**: session exists, startDate in future or minimum positions not met
-- **Active**: startDate ≤ now ≤ endDate AND positions count ≥ seats
-- **Closed**: endDate passed OR manually closed by manager/super admin
-
-## File Structure
-
-```
-.
-├── index.html                   # Landing page
-├── login.html                   # Login form
-├── redirect.html                # Loading/redirect page
-├── super_admin.html             # Super admin dashboard
-├── manager.html                 # Manager dashboard
-├── voter.html                   # Voter dashboard
-├── not-authorized.html          # 403 page
-├── auth.js                      # Login validation
-├── db.js                        # localStorage CRUD layer
-├── redirect.js                  # Role-based routing
-├── logout.js                    # Session cleanup
-├── dark-mode.js                 # Theme toggle manager
-├── style.css                    # Shared responsive styling
-├── default-users.txt            # Documentation of initial users
-├── MIGRATION_GUIDE.md           # Future backend migration steps
-└── .github/
-    └── copilot-instructions.md  # AI coding guidelines
+// Invites
+db.voterInvites.createIndex({ sessionId: 1, voterEmail: 1 }, { unique: true });
 ```
 
-## Known Limitations & Technical Debt
+## Security Checklist
 
-- **No Backend**: All data lost if localStorage is cleared or accessed in new incognito window
-- **Hardcoded Passwords**: Default password "1234" for all new users; no password reset
-- **No Encryption**: Credentials + votes stored in plain localStorage
-- **No Audit Trail**: No activity logging or event history
-- **No Email Notifications**: Voter invites require out-of-band communication
-- **Single-Tab Sync**: Changes in one tab don't auto-sync other tabs
-- **No Rate Limiting**: Anyone with access can spam requests/chats
-- **Chat Moderation**: No delete/edit on messages; no spam filters
+- [ ] **Password Hashing**: Use bcrypt (salt rounds: 10+)
+- [ ] **JWT Secrets**: Store in environment variables (never hardcode)
+- [ ] **CORS**: Restrict to frontend domain only
+- [ ] **Input Validation**: Sanitize all API inputs (email format, lengths, types)
+- [ ] **Rate Limiting**: Implement on `/api/auth` endpoints
+- [ ] **HTTPS Only**: Use TLS/SSL in production
+- [ ] **SQL/NoSQL Injection**: Use Mongoose (parameterized queries by default)
+- [ ] **Access Control**: Verify user role before returning data
+- [ ] **Audit Logging**: Log all admin actions (user creation, session closure, etc.)
+- [ ] **Refresh Tokens**: Implement token rotation (optional but recommended)
 
-## Future Backend Migration
-See `MIGRATION_GUIDE.md` for planned transition from localStorage to a REST API backend. The DB layer abstraction in `db.js` enables swapping to HTTP calls with minimal UI changes.
+## Environment Variables (.env)
 
-## Security Notes
-- **Demo Only**: This system is suitable only for demos/testing, not production
-- **No Authentication**: No real session tokens or JWT
-- **Plaintext Storage**: Users can inspect credentials in browser DevTools
-- **No HTTPS**: Should only run on localhost in development
+```env
+MONGO_URI=mongodb://localhost:27017/voting_system
+JWT_SECRET=your-super-secret-key-change-this
+NODE_ENV=development
+PORT=5000
+FRONTEND_URL=http://localhost:3000
+```
+
+## File Structure (After Migration)
+
+```
+project/
+├── frontend/                    # Existing voting system
+│   ├── index.html
+│   ├── login.html
+│   ├── manager.html
+│   ├── voter.html
+│   ├── super_admin.html
+│   ├── api.js                  # NEW: API wrapper (replaces db.js calls)
+│   ├── auth.js                 # UPDATED: use api.js
+│   ├── dark-mode.js
+│   └── style.css
+└── backend/                     # NEW: Node.js + MongoDB
+    ├── server.js               # Express app
+    ├── .env                    # Credentials (git-ignored)
+    ├── config/
+    │   └── db.js              # MongoDB connection
+    ├── models/
+    │   ├── User.js
+    │   ├── Session.js
+    │   ├── Position.js
+    │   ├── Candidate.js
+    │   ├── Vote.js
+    │   ├── VoterInvite.js
+    │   └── SessionChat.js
+    ├── routes/
+    │   ├── auth.js
+    │   ├── users.js
+    │   ├── sessions.js
+    │   ├── votes.js
+    │   └── chats.js
+    ├── middleware/
+    │   ├── auth.js            # JWT verification
+    │   └── errorHandler.js
+    ├── package.json
+    └── README.md
+```
+
+## Key Differences from localStorage
+
+| Feature | localStorage | MongoDB |
+|---------|--------------|---------|
+| **Persistence** | Browser only | Server-persistent |
+| **Multi-user** | Single browser | Shared database |
+| **Scalability** | ~5MB limit | Unlimited |
+| **Real-time Sync** | Manual polling | WebSocket capable |
+| **Backups** | None built-in | Snapshots, replication |
+| **Query Performance** | O(n) full scans | Indexed queries O(1) |
+| **Audit Trail** | None | Can log all changes |
+| **Offline** | Full functionality | Requires API fallback |
+
+## Migration Checklist
+
+- [ ] MongoDB instance running locally
+- [ ] Node.js + npm installed
+- [ ] Express server booted successfully
+- [ ] All schemas created with validation
+- [ ] JWT auth working
+- [ ] First API endpoint tested with Postman
+- [ ] Frontend `api.js` integrated
+- [ ] Login flow working (API → MongoDB)
+- [ ] Session CRUD working
+- [ ] Voting flow complete
+- [ ] Reports generating from MongoDB
+- [ ] Real-time features tested
+- [ ] Security review completed
+- [ ] Performance testing done
+- [ ] Deployed to staging environment
+
+
 
