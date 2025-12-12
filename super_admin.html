@@ -883,15 +883,7 @@
             </div>
         </div>
 
-        <!-- System Settings -->
-        <div class="section">
-            <h2>System Settings</h2>
-            <label>System Name</label>
-            <input id="sysName" style="width:60%;" />
-            <label>Rules</label>
-            <input id="sysRules" style="width:60%;" />
-            <button class="btn" id="saveSettingsBtn" style="display:block; margin-top:10px;">Save Settings</button>
-        </div>
+        <!-- System Settings removed per request -->
     </div>
     
     <!-- Profile Modal -->
@@ -1188,13 +1180,7 @@
             document.getElementById('analyticsVotes').textContent = votes;
         }
 
-        // Settings
-        document.getElementById('saveSettingsBtn').addEventListener('click', function() {
-            const name = document.getElementById('sysName').value;
-            const rules = document.getElementById('sysRules').value;
-            DB.updateSettings({ name: name || undefined, rules: rules || undefined });
-            alert('Settings saved');
-        });
+        // Settings removed from admin dashboard
 
         // Admin chat functions
         function openSuperAdminChat(sessionId) {
