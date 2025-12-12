@@ -1,1 +1,51 @@
-<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <title>Login</title> <link rel="stylesheet" href="style.css"> </head> <body> <div class="card"> <h2>Login</h2> <form id="loginForm"> <input type="email" id="email" placeholder="Email" required> <input type="password" id="password" placeholder="Password" required> <button class="btn">Login</button> </form> <p class="note">Only invited users can login.</p> </div> <script src="db.js"></script> <script src="auth.js"></script> </body> </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Login</title>
+	<link rel="stylesheet" href="style.css">
+	<style>
+		body { display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background: linear-gradient(135deg,#eef2ff,#f0fff4); }
+		.login-card { width:380px; background:white; padding:28px; border-radius:12px; box-shadow:0 14px 30px rgba(20,40,80,0.08); text-align:left; }
+		.brand { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+		.brand-logo { width:48px; height:48px; border-radius:10px; background:linear-gradient(135deg,#28a745,#66cc88); color:white; display:flex; align-items:center; justify-content:center; font-size:22px; }
+		h2 { margin:0 0 8px 0; color:#123; }
+		.subtitle { color:#556; font-size:13px; margin-bottom:14px; }
+		input[type=email], input[type=password] { width:100%; padding:12px; margin:8px 0; border:1px solid #e2e8f0; border-radius:8px; box-sizing:border-box; }
+		.btn { width:100%; padding:12px; background:linear-gradient(90deg,#28a745,#20b36b); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; }
+		.btn:hover { filter:brightness(0.95); }
+		.note { color:#666; font-size:13px; margin-top:12px; }
+		.help-row { display:flex; justify-content:space-between; align-items:center; margin-top:10px; }
+		.link { color:#0b6; font-size:13px; text-decoration:none; }
+		.login-footer { margin-top:14px; font-size:12px; color:#889; }
+	</style>
+</head>
+<body>
+	<div class="login-card card">
+		<div class="brand">
+			<div class="brand-logo">✓</div>
+			<div>
+				<h2>Sign In</h2>
+				<div class="subtitle">Access your voting dashboard</div>
+			</div>
+		</div>
+
+		<form id="loginForm">
+			<input type="email" id="email" placeholder="Email" required>
+			<input type="password" id="password" placeholder="Password" required>
+			<button class="btn">Login</button>
+		</form>
+
+		<div class="help-row">
+			<a href="index.html" class="link">Back to Welcome</a>
+			<a href="#" onclick="alert('If you forgot your password, ask the administrator.'); return false;" class="link">Forgot password?</a>
+		</div>
+
+		<p class="note">Only invited users can login. New invited voters may use the default temporary password provided by the organizer.</p>
+		<div class="login-footer">Tip: This demo stores data locally in your browser. For production, run on a secure server.</div>
+	</div>
+
+	<script src="db.js"></script>
+	<script src="auth.js"></script>
+</body>
+</html>

@@ -1,1 +1,84 @@
-<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <title>Voting System</title> <link rel="stylesheet" href="style.css"> </head> <body> <h1>Welcome to the Voting System</h1> <a href="login.html" class="btn">Login</a> </body> </html> 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Voting System</title>
+	<link rel="stylesheet" href="style.css">
+	<style>
+		body { display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background: linear-gradient(135deg,#f6f9fc,#e8f7ef); }
+		.welcome-card { background: white; padding:28px; border-radius:12px; box-shadow:0 12px 40px rgba(18,52,86,0.08); max-width:900px; width:100%; text-align:left; }
+		.welcome-header { display:flex; align-items:center; gap:16px; }
+		.logo { width:64px; height:64px; border-radius:12px; background:linear-gradient(135deg,#28a745,#66cc88); display:flex; align-items:center; justify-content:center; color:white; font-size:34px; }
+		.lead { color:#234; font-size:18px; margin-top:6px; }
+		.features { display:flex; gap:18px; margin-top:14px; }
+		.feature { flex:1; background:#df5151; padding:12px; border-radius:8px; border:1px solid #f0f0f0; }
+		.secure-note { margin-top:14px; color:#556; font-size:13px; }
+		.actions { margin-top:18px; }
+		.btn-primary { background:#28a745; color:white; padding:10px 18px; border-radius:8px; border:none; text-decoration:none; display:inline-block; }
+       .anime h1{
+    font-weight: bolder;
+    font-size: 150px;
+    font-family: "noto sans", sans-serif;
+    background-image: url(official.webp);
+    background-size: 500px;
+    background-clip: text;
+    color: transparent; 
+    animation: animate 2s linear infinite; 
+    margin: 0;
+    padding: 5px;
+    
+}
+
+@keyframes animate {
+    to {
+        background-position-x: -500px;
+    }
+}
+.anime{
+    background-color: rgb(54, 146, 51);
+    padding: 0;
+    border-radius: 20px;
+}
+
+	</style>
+</head>
+<body>
+<div class="anime">
+<h1>
+FABRIS SAFE VOTING
+    </h1>
+</div>
+    
+
+	<div class="welcome-card">
+		<div class="welcome-header">
+			<div class="logo">✓</div>
+			<div>
+				<h1 style="margin:0; color:#123;">FABRIS SAFE VOTING</h1>
+				<div class="lead">Simple, role-based local voting — for small organizations and events.</div>
+			</div>
+		</div>
+
+		<div class="features">
+			<div class="feature">
+				<strong>Role-based access</strong>
+				<div style="color:#556; font-size:13px; margin-top:6px;">Super-admin, manager and voter dashboards with tailored actions.</div>
+			</div>
+			<div class="feature">
+				<strong>Secure local storage</strong>
+				<div style="color:#556; font-size:13px; margin-top:6px;">All data is stored in your browser's localStorage — no external servers.</div>
+			</div>
+			<div class="feature">
+				<strong>Multi-seat elections</strong>
+				<div style="color:#556; font-size:13px; margin-top:6px;">Create sessions with multiple seats, candidate photos, and live countdowns.</div>
+			</div>
+		</div>
+
+		<p class="secure-note"><strong>Privacy & security:</strong> User data is stored locally in your browser. Protect your device and browser profile. Passwords are stored in localStorage for this demo app — keep them private and use a secure device.</p>
+
+		<div class="actions">
+			<a href="login.html" class="btn-primary">Go to Login</a>
+		</div>
+	</div>
+</body>
+</html>

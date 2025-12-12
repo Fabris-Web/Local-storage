@@ -93,7 +93,10 @@
                 <h1>Super Admin Dashboard</h1>
                 <p style="color: #666; margin: 5px 0 0 0;">System Administrator</p>
             </div>
-            <button class="btn" onclick="logout()">Logout</button>
+            <div style="display:flex; gap:8px;">
+                <button class="btn" onclick="openProfileModal()">Profile</button>
+                <button class="btn" onclick="logout()">Logout</button>
+            </div>
         </div>
 
         <!-- System Statistics -->
@@ -255,10 +258,68 @@
             <button class="btn" id="saveSettingsBtn" style="display:block; margin-top:10px;">Save Settings</button>
         </div>
     </div>
+    
+    <!-- Profile Modal -->
+    <div id="profileModal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+        <div style="background:white; width:420px; margin:auto; padding:18px; border-radius:8px; text-align:left; box-shadow:0 6px 24px rgba(0,0,0,0.2);">
+            <h3>Profile Settings</h3>
+            <div style="margin:8px 0;"><label>Name</label><br/><input id="profileName" style="width:100%; padding:8px;" /></div>
+            <div style="margin:8px 0;"><label>Email</label><br/><input id="profileEmail" style="width:100%; padding:8px;" disabled /></div>
+            <div style="margin:8px 0;"><label>Current Password (required to change password)</label><br/><input id="profileCurrentPassword" type="password" style="width:100%; padding:8px;" /></div>
+            <div style="margin:8px 0;"><label>New Password</label><br/><input id="profileNewPassword" type="password" style="width:100%; padding:8px;" /></div>
+            <div style="margin:8px 0;"><label>Confirm New Password</label><br/><input id="profileConfirmPassword" type="password" style="width:100%; padding:8px;" /></div>
+            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
+                <button class="btn" type="button" onclick="closeProfileModal()">Cancel</button>
+                <button class="btn" type="button" onclick="saveProfile()">Save</button>
+            </div>
+        </div>
+    </div>
 
     <script src="db.js"></script>
     <script src="logout.js"></script>
     <script src="invite.js"></script>
+    <script>
+        function openProfileModal() {
+            const raw = localStorage.getItem('currentUser');
+            if (!raw) return alert('No user logged in');
+            const user = JSON.parse(raw);
+            document.getElementById('profileName').value = user.name || '';
+            document.getElementById('profileEmail').value = user.email || '';
+            document.getElementById('profileCurrentPassword').value = '';
+            document.getElementById('profileNewPassword').value = '';
+            document.getElementById('profileConfirmPassword').value = '';
+            document.getElementById('profileModal').style.display = 'flex';
+        }
+        function closeProfileModal() { document.getElementById('profileModal').style.display = 'none'; }
+        function saveProfile() {
+            const raw = localStorage.getItem('currentUser');
+            if (!raw) return alert('No user logged in');
+            const user = JSON.parse(raw);
+            const name = document.getElementById('profileName').value.trim();
+            const current = document.getElementById('profileCurrentPassword').value;
+            const np = document.getElementById('profileNewPassword').value;
+            const cp = document.getElementById('profileConfirmPassword').value;
+
+            const patch = {};
+            if (name) patch.name = name;
+
+            if (np || cp) {
+                if (np !== cp) return alert('New password and confirmation do not match');
+                if (!current) return alert('Enter current password to change password');
+                if (current !== user.password) return alert('Current password is incorrect');
+                patch.password = np;
+            }
+
+            const updated = DB.updateUser(user.email, patch);
+            if (updated) {
+                localStorage.setItem('currentUser', JSON.stringify(Object.assign({}, user, patch)));
+                alert('Profile updated');
+                closeProfileModal();
+            } else {
+                alert('Failed to update profile');
+            }
+        }
+    </script>
     <script>
         // Load and display users with dropdown
         function loadUsers() {

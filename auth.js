@@ -27,7 +27,7 @@ loginForm.addEventListener("submit", function (e) {
     }
 
     if (!user) {
-        alert("Invalid email or password!");
+        alert("You are not yet invited to any Session!");
         return;
     }
 

@@ -66,6 +66,12 @@ const DB = {
 		const u = users.find(x => x.email === email);
 		if (u) { u.active = !!active; DB.saveUsers(users); }
 	},
+	updateUser: (email, patch) => {
+		const users = DB.getUsers();
+		const u = users.find(x => x.email === email);
+		if (u) { Object.assign(u, patch); DB.saveUsers(users); return u; }
+		return null;
+	},
 	deleteUser: (email) => {
 		let users = DB.getUsers();
 		users = users.filter(u => u.email !== email);
