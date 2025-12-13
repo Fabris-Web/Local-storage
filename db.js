@@ -14,7 +14,15 @@ if (!localStorage.getItem("users")) {
 		{ email: "manager@system.com", password: "1234", role: "manager", active: true },
 		{ email: "voter@system.com", password: "1234", role: "voter", active: true }
 	];
-	localStorage.setItem("users", JSON.stringify(defaultUsers));
+	localStorage.setItem("users", JSON.stringify(defaultUsers));	fetch('http://localhost:5000/api/auth/login', {
+	  method: 'POST',
+	  headers: { 'Content-Type': 'application/json' },
+	  body: JSON.stringify({ email: 'test@test.com', password: '1234' }),
+	  credentials: 'include'
+	})
+	.then(r => r.json())
+	.then(d => console.log(JSON.stringify(d, null, 2)))
+	.catch(e => console.error(e))
 }
 
 if (!localStorage.getItem("sessions")) {
