@@ -1,13 +1,15 @@
 require('dotenv').config();
 const express = require('express');
-const supabaseTest = require('./routes/supabase-test');
+const cookieParser = require('cookie-parser');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 
-app.get('/', (req, res) => res.json({ success: true, message: 'FABRIS Voting System API', endpoints: { health: '/api/health', supabase_ping: '/api/supabase/ping' } }));
+app.get('/', (req, res) => res.json({ success: true, message: 'FABRIS Voting System API - Auth Only', endpoints: { auth: '/api/auth' } }));
 
-app.use('/api/supabase', supabaseTest);
+app.use('/api/auth', authRoutes);
 
 app.get('/api/health', (req, res) => res.json({ success: true, message: 'API is running' }));
 
